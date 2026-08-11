@@ -1,0 +1,24 @@
+{
+  "name": "tecnocorte",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para peluquerías TecnoCorte: reservas, productos y pedidos.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.22.2",
+    "mongoose": "^8.24.2",
+    "morgan": "^1.11.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

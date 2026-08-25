@@ -1,8 +1,6 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
-// Modelo de Usuario: establece la estructura de los datos que se almacenarán en la
-// colección de usuarios, definiendo los campos, sus restricciones y generando
-// automáticamente las fechas de creación y actualización de cada registro.
 const usuarioSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   apellido: { type: String, required: true },
@@ -11,6 +9,19 @@ const usuarioSchema = new mongoose.Schema({
   telefono: { type: String },
   rol: { type: String, default: 'Cliente' }
 }, { timestamps: true });
+
+// Antes de guardar, hashea la password si fue modificada
+usuarioSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+// Método para comparar passwords en el login
+usuarioSchema.methods.compararPassword = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
 
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 

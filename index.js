@@ -19,6 +19,7 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Rutas: se registran las rutas de cada modelo bajo su dirección.
+app.use('/api/auth', require('./routes/Auth.routes'));
 app.use('/api/usuarios', require('./routes/Usuario.routes'));
 app.use('/api/productos', require('./routes/Producto.routes'));
 app.use('/api/peluquerias', require('./routes/Peluqueria.routes'));

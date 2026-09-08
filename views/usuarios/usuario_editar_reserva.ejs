@@ -1,0 +1,34 @@
+<% // Layout: dashboard %>
+<main class="max-w-2xl mx-auto p-8 md:p-12"><a class="text-primary" href="/perfil">←
+        Volver a mi perfil</a>
+    <div class="bg-surface-container-low rounded-xl p-8 mt-6">
+        <h1 class="font-headline text-3xl mb-6">Modificar cita</h1><% if (!reserva.peluquero.activo) { %><div class="mb-4 flex items-start gap-2 rounded-md border border-error/30 bg-error-container/15 p-3 text-sm text-error"><span class="material-symbols-outlined text-base">person_off</span><span>Tu barbero está suspendido y no podrá atender esta cita. Selecciona otro barbero para reagendarla.</span></div><% } %><% if (error) { %><p class="text-error mb-4"><%= error %>
+        </p><% } %><form method="post" class="space-y-5"><!-- csrf: auth JWT --><select name="servicio"
+                class="w-full bg-surface-container-high p-3 rounded"><% servicios.forEach(function(servicio) { %><option
+                    value="<%= servicio.nombre %>" <% if (reserva.servicio == servicio.nombre) { %>selected<% } %>><%= servicio.nombre %> · <%= servicio.duracion %></option><% }); %></select><select name="peluqueria" id="peluqueria-editar"
+                class="w-full bg-surface-container-high p-3 rounded" onchange="filtrarBarberosEditar()"><% peluquerias.forEach(function(peluqueria) { %><option
+                    value="<%= peluqueria.id %>" <% if (reserva.peluqueria_id == peluqueria.id) { %>selected<% } %>><%= peluqueria.nombre %></option><% }); %></select><select name="peluquero" id="peluquero-editar"
+                class="w-full bg-surface-container-high p-3 rounded"><% peluqueros.forEach(function(barbero) { %><option
+                    value="<%= barbero.id %>" data-peluqueria="<%= barbero.peluqueria_id %>"
+                    <% if (reserva.peluquero_id == barbero.id) { %>selected<% } %>><%= barbero.nombre %> <%= barbero.apellido %></option><% }); %></select>
+            <div class="grid grid-cols-2 gap-4"><input required type="date" name="fecha"
+                    value="<%= fmtFecha(reserva.fecha, 'Y-m-d') %>" class="bg-surface-container-high p-3 rounded"><input
+                    required type="time" name="hora" value="<%= fmtFecha(reserva.hora, 'H:i') %>"
+                    class="bg-surface-container-high p-3 rounded"></div><button
+                class="btn-gold-gradient px-5 py-3 rounded font-bold">Guardar cambios</button>
+        </form>
+    </div>
+</main><script>
+        function filtrarBarberosEditar() {
+            var peluqueria = document.getElementById('peluqueria-editar').value;
+            var select = document.getElementById('peluquero-editar');
+            var seleccionado = select.value;
+            Array.prototype.forEach.call(select.options, function (opcion) {
+                opcion.hidden = opcion.dataset.peluqueria !== peluqueria && opcion.value !== seleccionado;
+            });
+            if (select.querySelector('option:not([hidden])') === null && seleccionado) {
+                select.value = seleccionado;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', filtrarBarberosEditar);
+    </script>

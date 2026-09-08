@@ -1,0 +1,245 @@
+<% // Layout: dashboard %>
+<%- include('../partials/peluquero-sidebar', { active: 'inicio' }) %>
+<main class="flex-1 md:ml-72 flex flex-col min-h-screen relative bg-background">
+  <header class="glass-header sticky top-0 z-40 flex justify-between items-center w-full px-6 md:px-12 py-4">
+    <a class="inline-flex md:hidden" href="/barbero" aria-label="TecnoCorte"><%- include('../partials/logo') %></a>
+    <div class="hidden md:block"></div>
+    <div class="flex items-center gap-6">
+      <a href="/barbero/notificaciones" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Notificaciones"><span class="material-symbols-outlined">notifications</span></a>
+      <a href="/barbero/perfil" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Mi perfil"><span class="material-symbols-outlined">account_circle</span></a>
+    </div>
+  </header>
+
+  <div class="p-6 md:p-12 space-y-12 max-w-7xl mx-auto w-full">
+
+    <!-- Saludo + Calificación -->
+    <section class="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-surface-container-low pb-8">
+      <div>
+        <h2 class="font-headline text-4xl md:text-5xl text-on-surface tracking-tight mb-2">
+          Hola, <span class="text-primary italic"><%= logueado.nombre %>.</span>
+        </h2>
+        <p class="font-body text-body-lg text-on-surface-variant">Resumen de tu actividad como barbero.</p>
+      </div>
+      <div class="text-right">
+        <p class="font-label uppercase tracking-widest text-label-sm text-on-surface-variant mb-1">Calificación</p>
+        <div class="flex items-center justify-end gap-2">
+          <span class="font-headline text-3xl text-primary font-bold"><%= promedio || '-' %></span>
+          <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+        </div>
+        <p class="text-xs text-on-surface-variant mt-1"><%= total_calificaciones || 0 %> reseña<%= (total_calificaciones && total_calificaciones !== 1) ? 's' : '' %></p>
+      </div>
+    </section>
+
+    <!-- Métricas Bento Grid -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Citas Hoy -->
+      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
+        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
+          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">today</span>
+        </div>
+        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Citas Hoy</h3>
+        <p class="font-headline text-3xl text-on-surface font-bold"><%= (citas_hoy && citas_hoy.length) || 0 %></p>
+      </div>
+      <!-- Ingresos Hoy -->
+      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
+        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
+          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">payments</span>
+        </div>
+        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Ingresos Hoy</h3>
+        <p class="font-headline text-2xl text-on-surface font-bold">$<%= fmtMoneda(ingresos_hoy || 0) %></p>
+        <p class="text-xs text-on-surface-variant">COP</p>
+      </div>
+      <!-- Ingresos Totales -->
+      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
+        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
+          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+        </div>
+        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Ingresos Totales</h3>
+        <p class="font-headline text-2xl text-on-surface font-bold">$<%= fmtMoneda(ingresos_total || 0) %></p>
+        <p class="text-xs text-on-surface-variant">COP · <%= (citas_completadas && citas_completadas.length) || 0 %> servicios</p>
+      </div>
+      <!-- Total Citas -->
+      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
+        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
+          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+        </div>
+        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Total Citas</h3>
+        <p class="font-headline text-3xl text-on-surface font-bold"><%= total_citas || 0 %></p>
+        <div class="flex gap-3 mt-2 text-xs">
+          <span class="text-primary"><%= (citas_pendientes && citas_pendientes.length) || 0 %> pend.</span>
+          <span class="text-green-400"><%= (citas_completadas && citas_completadas.length) || 0 %> hechas</span>
+          <span class="text-error"><%= (citas_canceladas && citas_canceladas.length) || 0 %> canc.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="flex justify-center items-center h-4">
+      <div class="w-1 h-1 rounded-full bg-primary-container"></div>
+    </div>
+
+    <!-- Citas con botones de estado -->
+    <section>
+      <div class="flex justify-between items-end mb-8">
+        <div>
+          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Mis Citas</h3>
+          <p class="font-body text-on-surface-variant">Gestiona el estado de cada cita.</p>
+        </div>
+        <a class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2" href="/barbero/nueva-cita">
+          Nueva Cita <span class="material-symbols-outlined text-sm">add</span>
+        </a>
+      </div>
+
+      <div class="space-y-4">
+        <% if (citas && citas.length) { %>
+          <% citas.forEach(function(cita) { %>
+        <div class="bg-surface-container-low rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ambient-glow">
+          <div class="flex items-start gap-4">
+            <div class="flex flex-col items-center justify-center bg-surface-container-highest p-3 rounded-lg min-w-[70px]">
+              <span class="text-primary-container text-xs font-bold uppercase"><%= fmtFecha(cita.fecha, 'MMM') %></span>
+              <span class="font-headline text-2xl text-on-surface"><%= fmtFecha(cita.fecha, 'dd') %></span>
+            </div>
+            <div>
+              <h4 class="font-body text-lg text-on-surface font-semibold"><%= cita.servicio %></h4>
+              <p class="text-on-surface-variant text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-[14px]">person</span><%= (cita.cliente && cita.cliente.nombre) || '' %> <%= (cita.cliente && cita.cliente.apellido) || '' %>
+              </p>
+              <p class="text-on-surface-variant text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-[14px]">schedule</span><%= fmtFecha(cita.hora, 'HH:mm') %> · <%= (cita.peluqueria && cita.peluqueria.nombre) || '' %>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <% if (cita.estado === 'Pendiente' || cita.estado === 'Confirmada') { %>
+            <form method="post" action="/barbero/citas/<%= cita.id %>/estado" class="flex items-center gap-2">
+              <!-- csrf: auth JWT -->
+              <input type="hidden" name="estado" value="Completada">
+              <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors active:scale-95">
+                <span class="material-symbols-outlined text-[14px]">check_circle</span> Completar
+              </button>
+            </form>
+            <form method="post" action="/barbero/citas/<%= cita.id %>/estado" class="inline">
+              <!-- csrf: auth JWT -->
+              <input type="hidden" name="estado" value="Cancelada">
+              <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors active:scale-95" data-confirm="¿Cancelar esta cita?">
+                <span class="material-symbols-outlined text-[14px]">cancel</span> Cancelar
+              </button>
+            </form>
+            <% } %>
+
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest
+              <% if (cita.estado === 'Completada') { %>bg-green-500/10 text-green-400 border border-green-500/20
+              <% } else if (cita.estado === 'Confirmada') { %>bg-primary/10 text-primary border border-primary/20
+              <% } else if (cita.estado === 'Cancelada') { %>bg-error/10 text-error border border-error/20
+              <% } else { %>bg-secondary-container/20 text-secondary border border-secondary-container/30<% } %>">
+              <%= cita.estado %>
+            </span>
+          </div>
+        </div>
+        <% }); %>
+        <% } else { %>
+        <div class="bg-surface-container-low rounded-xl p-12 text-center ambient-glow">
+          <span class="material-symbols-outlined text-5xl text-primary/30 mb-4">event_busy</span>
+          <p class="font-body text-on-surface-variant text-lg">No tienes citas registradas.</p>
+          <a href="/barbero/nueva-cita" class="inline-flex items-center gap-2 mt-4 text-primary font-bold uppercase tracking-widest text-sm hover:opacity-80">
+            <span class="material-symbols-outlined text-base">add</span> Agendar primera cita
+          </a>
+        </div>
+        <% } %>
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="flex justify-center items-center h-4">
+      <div class="w-1 h-1 rounded-full bg-primary-container"></div>
+    </div>
+
+    <!-- Reseñas recientes -->
+    <% if (calificaciones && calificaciones.length) { %>
+    <section>
+      <div class="flex justify-between items-end mb-8">
+        <div>
+          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Reseñas de Clientes</h3>
+          <p class="font-body text-on-surface-variant">Lo que dicen de ti.</p>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <% calificaciones.forEach(function(cal) { %>
+        <div class="bg-surface-container-low rounded-xl p-6 ambient-glow">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary text-lg">person</span>
+              </div>
+              <div>
+                <p class="font-body text-on-surface font-semibold"><%= (cal.cliente && cal.cliente.nombre) || '' %> <%= (cal.cliente && cal.cliente.apellido) || '' %></p>
+                <p class="text-xs text-on-surface-variant"><%= fmtFecha(cal.fecha, 'dd/MM/yyyy') %></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <% for (var i = 1; i <= 5; i++) { %>
+                <% if (i <= (cal.puntuacion || 0)) { %>
+                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                <% } else { %>
+                <span class="material-symbols-outlined text-primary/30 text-sm">star</span>
+                <% } %>
+              <% } %>
+              <span class="font-bold text-primary text-sm ml-1"><%= cal.puntuacion || 0 %></span>
+            </div>
+          </div>
+          <% if (cal.comentario) { %>
+          <p class="text-on-surface-variant text-sm mt-2 border-t border-outline-variant/10 pt-3"><%= cal.comentario %></p>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+    </section>
+    <% } %>
+
+    <!-- Portfolio Gallery -->
+    <section>
+      <div class="flex justify-between items-end mb-8">
+        <div>
+          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Tu Obra Reciente</h3>
+          <p class="font-body text-on-surface-variant">Últimos cortes añadidos al portafolio.</p>
+        </div>
+        <button class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2">
+          Galería
+          <span class="material-symbols-outlined text-sm">add_a_photo</span>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer">
+          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            data-alt="Corte degradado"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfXImOoRddLvLwFRu5vu6rLeMGEAsABU4uP6YViiSFkWcOl8NlztzXWJzqtWmiInW-_BIycGJ6_tQySdvTQutzDXklQ--uTO4AbMkUPPhS9UGka7EHrT8QrXfOgmRqRMfGVMEnHqf1_0apPdzDaBs0vHHsf_0Z-zkKpIjRyYL76k7oCgZCjYSsQxBVmOu0vnnqgOoSEml4Zw8kcxIjFnRKCuuHArzA-OOMTi-JsdXK9RdcvRBk-ktaSU9a71aL5sePtBHbqh2MN5pS" />
+          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+            <span class="font-label uppercase tracking-widest text-xs text-primary">Degradado</span>
+          </div>
+        </div>
+        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer">
+          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            data-alt="Barba bien cuidada"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCWMeUC8dbkf0zLwbDbCqOvCFxU7FAK9uwudtE7_gVJGl-ORVP1CMO8KXZaPUUhdWSamX2B_FEbQZhwP4KPWIjy1iQo-QaDXFiqAckOlKu2B9I9Gy00WV82ORRiBlQZYxTLPVWAkiobJqJ1pYmiHW_VpnGX4eCOhZX8cdbp_mommb0xmgEmnp0ygPIvTNpJkhvP1D1iaNIwg-R2UCRbCn_v0g2aJ0YiVe8C54WKjgx2k7zw770K_ZYeRND0djDccUMW4BS06bJ02Ao" />
+          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+            <span class="font-label uppercase tracking-widest text-xs text-primary">Diseño de Barba</span>
+          </div>
+        </div>
+        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer hidden md:block">
+          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            data-alt="Máquina de cortar"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV4V20qKBbPC3gvzmY5qaFKdlP_nPl-xuf3vzwBh92JkcpcSaSXIjXH6KjC3xVEBsutCM_bRmcoEcM3KHekS9v6So13OfKDk5o37pH47APy3EsRTn0aKii4hy4kr6kXKPhrh4LWHFzaJXRAT5teVSzq8_0GxJJiFlv3RG64WKTLHnfGTyBXujlXexyM2L_bt9Ev2yTY1kF1Kh0VLJNhbGlRRqfKKD4vI29AtA1ghbTWLYHSU44w0fffPErB72MF6z9ZeH_VdjLPU05" />
+          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+            <span class="font-label uppercase tracking-widest text-xs text-primary">Herramientas</span>
+          </div>
+        </div>
+        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer hidden md:block bg-surface-container-low flex flex-col justify-center items-center border border-outline-variant/20 hover:border-primary/50 transition-colors duration-300">
+          <span class="material-symbols-outlined text-4xl text-primary/50 mb-2">photo_library</span><span class="font-label uppercase tracking-widest text-xs text-on-surface-variant">Ver Galería Completa</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="h-24"></div>
+  </div>
+</main>

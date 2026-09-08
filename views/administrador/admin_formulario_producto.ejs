@@ -1,0 +1,19 @@
+<% // Layout: dashboard %>
+<%- include('../partials/admin-sidebar', { active: 'productos' }) %>
+<main class="ml-64 flex-1 p-12">
+<a href="/admin/productos" class="text-primary">← Volver a productos</a>
+<div class="max-w-xl bg-surface-container-low p-8 rounded-xl mt-6">
+<h1 class="font-headline text-3xl mb-6"><% if (producto) { %>Editar<% } else { %>Nuevo<% } %> producto</h1>
+<form method="post" class="space-y-5"><!-- csrf: auth JWT -->
+<input required name="nombre" value="<%= producto ? producto.nombre : '' %>" placeholder="Nombre" class="w-full rounded bg-surface-container-high border-0 p-3">
+<textarea name="descripcion" placeholder="Descripción" class="w-full rounded bg-surface-container-high border-0 p-3"><%= producto ? producto.descripcion || '' : '' %></textarea>
+<div class="grid grid-cols-2 gap-4">
+<input required type="number" min="0" name="precio" value="<%= producto ? producto.precio : '' %>" placeholder="Precio" class="rounded bg-surface-container-high border-0 p-3">
+<input required type="number" min="0" name="stock" value="<%= producto ? producto.stock || 0 : 0 %>" placeholder="Stock" class="rounded bg-surface-container-high border-0 p-3">
+</div>
+<select name="categoria" class="w-full rounded bg-surface-container-high border-0 p-3"><% if (categorias) { categorias.forEach(function(categoria) { %><option value="<%= categoria[0] %>" <% if (producto && producto.categoria === categoria[0]) { %>selected<% } %>><%= categoria[1] %></option><% }); } %></select>
+<label class="flex gap-2"><input type="checkbox" name="disponible" <% if (!producto || producto.disponible) { %>checked<% } %>> Disponible en tienda</label>
+<button class="btn-gold-gradient px-5 py-3 rounded font-bold">Guardar producto</button>
+</form>
+</div>
+</main>

@@ -1,0 +1,7 @@
+<% if (logueado) { %>
+<% var nc_url = logueado.rol === 'Cliente' ? '/notificaciones' : (logueado.rol === 'Barbero' ? '/barbero/notificaciones' : '/admin/notificaciones'); %>
+<a href="<%= nc_url %>" class="relative inline-flex items-center justify-center text-primary transition-all duration-300 hover:scale-105 hover:text-primary-container" title="Notificaciones" aria-label="Notificaciones<% if (notificaciones_no_leidas) { %>: <%= notificaciones_no_leidas %> sin leer<% } %>">
+  <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
+  <% if (notificaciones_no_leidas) { %><span class="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-on-error"><%= notificaciones_no_leidas %></span><% } %>
+</a>
+<% } %>

@@ -1,0 +1,22 @@
+<% // Layout: dashboard %>
+<%- include('../partials/admin-sidebar', { active: 'mensajes' }) %>
+<main class="ml-64 flex-1 p-12">
+<h1 class="font-headline text-4xl text-primary mb-2">Mensajes recibidos</h1>
+<p class="text-on-surface-variant mb-8">Consultas enviadas desde la sección Contáctanos.</p>
+<div class="space-y-5">
+<% if (mensajes && mensajes.length) { mensajes.forEach(function(mensaje) { %>
+<article class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/20">
+<div class="flex justify-between gap-4">
+<div>
+<h2 class="font-headline text-xl"><%= mensaje.asunto %></h2>
+<p class="text-primary text-sm mt-1"><%= mensaje.nombre %> · <%= mensaje.email %></p>
+</div>
+<time class="text-xs text-on-surface-variant"><%= fmtFecha(mensaje.fecha, 'dd/MM/yyyy HH:mm') %></time>
+</div>
+<p class="mt-4 whitespace-pre-line text-on-surface-variant"><%= mensaje.mensaje %></p>
+</article>
+<% }); } else { %>
+<p class="text-on-surface-variant">No hay mensajes todavía.</p>
+<% } %>
+</div>
+</main>

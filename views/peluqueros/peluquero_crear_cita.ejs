@@ -1,0 +1,74 @@
+<% // Layout: dashboard %>
+<%- include('../partials/peluquero-sidebar', { active: 'nueva_cita' }) %>
+<main class="flex-1 md:ml-72 flex flex-col min-h-screen relative bg-background">
+  <header class="glass-header sticky top-0 z-40 flex justify-between items-center w-full px-6 md:px-12 py-4">
+    <a class="inline-flex md:hidden" href="/barbero" aria-label="TecnoCorte"><%- include('../partials/logo') %></a>
+    <div class="hidden md:block"></div>
+    <a href="/barbero" class="flex items-center gap-2 text-primary uppercase tracking-widest text-sm font-bold hover:text-primary-container transition-colors active:scale-95">
+      <span class="material-symbols-outlined text-base">arrow_back</span>Volver
+    </a>
+  </header>
+  <div class="p-6 md:p-12 max-w-2xl mx-auto w-full">
+    <h2 class="font-headline text-4xl text-on-surface tracking-tight mb-2">Nueva <span class="text-primary italic">Cita</span></h2>
+    <p class="font-body text-on-surface-variant mb-10">Agenda una cita para uno de tus clientes.</p>
+    <% if (error) { %><p class="mb-6 rounded-md border border-error/50 bg-error-container/20 px-4 py-3 text-error"><%= error %></p><% } %>
+    <form method="post" class="bg-surface-container-low rounded-lg ambient-shadow p-8 grid gap-6">
+      <!-- csrf: auth JWT -->
+      <div class="grid gap-2">
+        <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Cliente</label>
+        <select name="cliente" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+          <option value="" class="bg-surface-container-high">Seleccione un cliente</option>
+          <% if (clientes && clientes.length) { %>
+          <% clientes.forEach(function(cliente) { %>
+          <option value="<%= cliente.id %>" class="bg-surface-container-high"><%= cliente.nombre %> <%= cliente.apellido %></option>
+          <% }); %>
+          <% } %>
+        </select>
+      </div>
+      <div class="grid gap-2">
+        <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Peluquería</label>
+        <select name="peluqueria" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+          <option value="" class="bg-surface-container-high">Seleccione una peluquería</option>
+          <% if (peluquerias && peluquerias.length) { %>
+          <% peluquerias.forEach(function(peluqueria) { %>
+          <option value="<%= peluqueria.id %>" class="bg-surface-container-high"><%= peluqueria.nombre %></option>
+          <% }); %>
+          <% } %>
+        </select>
+      </div>
+      <div class="grid gap-2">
+        <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Servicio</label>
+        <select name="servicio" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+          <% if (servicios && servicios.length) { %>
+          <% servicios.forEach(function(servicio) { %>
+          <option value="<%= servicio.nombre %>" class="bg-surface-container-high"><%= servicio.nombre %> — $<%= servicio.precio %></option>
+          <% }); %>
+          <% } %>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <div class="grid gap-2">
+          <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Fecha</label>
+          <input type="date" name="fecha" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+        </div>
+        <div class="grid gap-2">
+          <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Hora</label>
+          <input type="time" name="hora" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+        </div>
+      </div>
+      <div class="grid gap-2">
+        <label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Estado</label>
+        <select name="estado" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
+          <% if (reserva_estados && reserva_estados.length) { %>
+          <% reserva_estados.forEach(function(estado) { %>
+          <option value="<%= estado.value %>" class="bg-surface-container-high" <%= estado.value === 'Pendiente' ? 'selected' : '' %>><%= estado.label %></option>
+          <% }); %>
+          <% } %>
+        </select>
+      </div>
+      <div class="pt-2">
+        <button type="submit" class="btn-gold-gradient font-label uppercase tracking-widest text-sm font-bold py-4 px-10 rounded-md hover:opacity-90 transition-opacity active:scale-95">Guardar Cita</button>
+      </div>
+    </form>
+  </div>
+</main>

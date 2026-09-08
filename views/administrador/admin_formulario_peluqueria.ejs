@@ -1,0 +1,14 @@
+<% // Layout: dashboard %>
+<%- include('../partials/admin-sidebar', { active: 'peluquerias' }) %>
+<main class="ml-64 flex-1 p-12">
+<a href="/admin/peluquerias" class="text-primary">← Volver a barberías</a>
+<div class="max-w-xl bg-surface-container-low p-8 rounded-xl mt-6">
+<h1 class="font-headline text-3xl mb-6"><% if (peluqueria) { %>Editar<% } else { %>Nueva<% } %> barbería</h1>
+<form method="post" class="space-y-5"><!-- csrf: auth JWT -->
+<input required name="nombre" value="<%= peluqueria ? peluqueria.nombre : '' %>" placeholder="Nombre" class="w-full rounded bg-surface-container-high border-0 p-3">
+<input required name="ubicacion" value="<%= peluqueria ? peluqueria.ubicacion : '' %>" placeholder="Dirección o ubicación" class="w-full rounded bg-surface-container-high border-0 p-3">
+<input required name="telefono" value="<%= peluqueria ? peluqueria.telefono : '' %>" placeholder="Teléfono" class="w-full rounded bg-surface-container-high border-0 p-3">
+<button class="btn-gold-gradient px-5 py-3 rounded font-bold">Guardar</button>
+</form>
+</div>
+</main>

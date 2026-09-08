@@ -6,8 +6,8 @@ const morgan = require('morgan');
 const { connectDB } = require('./config/db');
 const { cargarSesion } = require('./middleware/webAuth');
 
-// Carga las variables del archivo .env (PORT y DATABASE_URL).
-dotenv.config();
+// Carga las variables del archivo .env sin imprimir diagnósticos de dotenv en producción.
+dotenv.config({ quiet: true });
 
 if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
   throw new Error('MONGO_URI (o DATABASE_URL) y JWT_SECRET son obligatorios para iniciar TecnoCorte');

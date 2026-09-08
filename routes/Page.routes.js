@@ -9,7 +9,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.get('/', (req, res) => res.render('publicos/index', { layout: false, active: 'inicio' }));
-router.get('/login', pageController.renderLogin);
+router.get('/login', (req, res) => pageController.renderLogin(req, res));
 router.post('/login', rateLimitLogin, asyncHandler(pageController.login));
 router.get('/registro', (req, res) => res.render('publicos/registro', { layout: false, proximo: req.query.next || '' }));
 router.post('/registro', asyncHandler(pageController.registro));

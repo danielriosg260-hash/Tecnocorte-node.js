@@ -1,74 +1,61 @@
 const Usuario = require('../models/Usuario.model');
 
-// Controlador de Usuario: contiene las funciones que se usan para
-// crear, listar, actualizar y eliminar usuarios en la base de datos.
+const camposPublicos = (usuario) => ({
+  id: usuario._id,
+  nombre: usuario.nombre,
+  apellido: usuario.apellido,
+  email: usuario.email,
+  telefono: usuario.telefono,
+  rol: usuario.rol,
+  activo: usuario.activo,
+  peluqueria_id: usuario.peluqueria_id
+});
 
-// Crea un usuario nuevo. create() es el equivalente de insertOne en mongoose.
 const crear = async (req, res) => {
   try {
-    const usuario = await Usuario.create(req.body);
-    res.status(201).json(usuario);
+    const { nombre, apellido, email, password, telefono, rol, peluqueria_id } = req.body;
+    if (!nombre || !apellido || !email || typeof password !== 'string' || password.length < 8) return res.status(400).json({ mensaje: 'Datos de usuario inválidos' });
+    const usuario = await Usuario.create({ nombre, apellido, email, password, telefono, rol, peluqueria_id });
+    return res.status(201).json(camposPublicos(usuario));
   } catch (error) {
-    res.status(400).json({ mensaje: error.message });
+    return res.status(400).json({ mensaje: error.code === 11000 ? 'El correo ya está registrado' : 'No se pudo crear el usuario' });
   }
 };
 
-// Lista todos los usuarios que hay guardados.
 const listarTodos = async (req, res) => {
-  try {
-    const usuarios = await Usuario.find();
-    res.status(200).json(usuarios);
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
+  const usuarios = await Usuario.find().select('-password').sort({ createdAt: -1 });
+  res.status(200).json(usuarios);
 };
 
-// Busca un solo usuario por su id. findOne busca el primero que coincida
-// con la condición ({ _id: req.params.id }).
 const listarUno = async (req, res) => {
-  try {
-    const usuario = await Usuario.findOne({ _id: req.params.id });
-    if (!usuario) {
-      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
-    }
-    res.status(200).json(usuario);
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
+  const usuario = await Usuario.findById(req.params.id).select('-password');
+  if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+  res.status(200).json(usuario);
 };
 
-// Actualiza un usuario. findOneAndUpdate busca el usuario y le aplica
-// los cambios que vienen en req.body. { new: true } hace que responda
-// con el usuario ya actualizado.
 const actualizar = async (req, res) => {
   try {
-    const usuario = await Usuario.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
-    if (!usuario) {
-      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    const usuario = await Usuario.findById(req.params.id).select('+password');
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    const campos = ['nombre', 'apellido', 'email', 'telefono', 'rol', 'activo', 'peluqueria_id'];
+    campos.forEach((campo) => {
+      if (req.body[campo] !== undefined) usuario[campo] = req.body[campo];
+    });
+    if (req.body.password !== undefined) {
+      if (typeof req.body.password !== 'string' || req.body.password.length < 8) return res.status(400).json({ mensaje: 'La contraseña debe tener al menos 8 caracteres' });
+      usuario.password = req.body.password;
     }
-    res.status(200).json(usuario);
+    await usuario.save();
+    return res.status(200).json(camposPublicos(usuario));
   } catch (error) {
-    res.status(500).json({ mensaje: error.message });
+    return res.status(400).json({ mensaje: error.code === 11000 ? 'El correo ya está registrado' : 'No se pudo actualizar el usuario' });
   }
 };
 
-// Elimina un usuario por su id. findOneAndDelete busca el usuario y lo elimina.
 const eliminar = async (req, res) => {
-  try {
-    const usuario = await Usuario.findOneAndDelete({ _id: req.params.id });
-    if (!usuario) {
-      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
-    }
-    res.status(200).json({ mensaje: 'Usuario eliminado correctamente' });
-  } catch (error) {
-    res.status(500).json({ mensaje: error.message });
-  }
+  const usuario = await Usuario.findByIdAndDelete(req.params.id);
+  if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+  res.status(200).json({ mensaje: 'Usuario eliminado correctamente' });
 };
 
-module.exports = {
-  crear,
-  listarTodos,
-  listarUno,
-  actualizar,
-  eliminar
-};
+module.exports = { crear, listarTodos, listarUno, actualizar, eliminar };

@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const productoController = require('../controllers/Producto.controller');
+const verificarToken = require('../middleware/auth');
+const exigirRol = require('../middleware/roles');
+
+router.use(verificarToken);
 
 // Rutas de Producto: cada ruta enlaza una dirección con una función del controlador.
 
@@ -11,12 +15,12 @@ router.get('/', productoController.listarTodos);
 router.get('/:id', productoController.listarUno);
 
 //crea un producto nuevo
-router.post('/', productoController.crear);
+router.post('/', exigirRol('Admin'), productoController.crear);
 
 //actualiza un producto
-router.put('/:id', productoController.actualizar);
+router.put('/:id', exigirRol('Admin'), productoController.actualizar);
 
 //elimina un producto
-router.delete('/:id', productoController.eliminar);
+router.delete('/:id', exigirRol('Admin'), productoController.eliminar);
 
 module.exports = router;

@@ -7,9 +7,11 @@ const mongoose = require('mongoose');
 const reservaSchema = new mongoose.Schema({
   cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   peluqueria: { type: mongoose.Schema.Types.ObjectId, ref: 'Peluqueria', required: true },
+  peluquero: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   fecha: { type: Date, required: true },
   hora: { type: String, required: true },
   servicio: { type: String },
+  minutos: { type: Number, default: 30, min: 15, max: 480 },
   estado: { type: String, default: 'Pendiente' }
 }, { timestamps: true });
 

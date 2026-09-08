@@ -1,14 +1,13 @@
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario.model');
+const { getSessionToken } = require('../config/session');
 
 const verificarToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token = getSessionToken(req);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({ mensaje: 'Token no proporcionado' });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);

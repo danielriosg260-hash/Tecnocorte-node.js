@@ -1,63 +1,99 @@
 const express = require('express');
+const multer = require('multer');
+const pageController = require('../controllers/Page.controller');
+const rateLimitLogin = require('../middleware/rateLimit');
+const { exigirRol, exigirSesion } = require('../middleware/webAuth');
+const asyncHandler = require('../middleware/asyncHandler');
+
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ── Públicas (páginas completas autocontenidas) ────────────────────────────
 router.get('/', (req, res) => res.render('publicos/index', { layout: false, active: 'inicio' }));
-router.get('/login', (req, res) => res.render('publicos/login', { layout: false }));
-router.get('/registro', (req, res) => res.render('publicos/registro', { layout: false }));
+router.get('/login', pageController.renderLogin);
+router.post('/login', rateLimitLogin, asyncHandler(pageController.login));
+router.get('/registro', (req, res) => res.render('publicos/registro', { layout: false, proximo: req.query.next || '' }));
+router.post('/registro', asyncHandler(pageController.registro));
+router.get('/logout', pageController.logout);
 router.get('/ayuda', (req, res) => res.render('publicos/ayuda', { layout: false }));
-
-// ── Públicas con layout base ───────────────────────────────────────────────
-router.get('/recuperar-password', (req, res) => res.render('publicos/recuperar_password', { layout: 'layouts/base', title: 'Recuperar contraseña' }));
-router.get('/restablecer-password/:token', (req, res) => res.render('publicos/restablecer_password', { layout: 'layouts/base', title: 'Restablecer contraseña', token: req.params.token }));
+router.post('/ayuda', asyncHandler(pageController.ayuda));
+router.get('/recuperar-password', (req, res) => res.render('publicos/recuperar_password', { layout: 'layouts/base', title: 'Recuperar contraseña', enviado: false }));
+router.post('/recuperar-password', asyncHandler(pageController.solicitarRecuperacion));
+router.get('/restablecer-password/:token', asyncHandler(pageController.renderReset));
+router.post('/restablecer-password/:token', asyncHandler(pageController.restablecerPassword));
 router.get('/como-funciona', (req, res) => res.render('publicos/como_funciona', { layout: 'layouts/base', title: '¿Cómo funciona?' }));
 router.get('/sobre-nosotros', (req, res) => res.render('publicos/sobre_nosotros', { layout: 'layouts/base', title: 'Sobre nosotros' }));
 
-// ── Usuarios (cliente) ─────────────────────────────────────────────────────
-router.get('/tienda', (req, res) => res.render('usuarios/usuario_tienda', { layout: false, active: 'tienda' }));
-router.get('/servicios', (req, res) => res.render('usuarios/usuario_servicios', { layout: false, active: 'servicios' }));
-router.get('/peluquerias', (req, res) => res.render('usuarios/usuario_peluquerias', { layout: false, active: 'barberias' }));
-router.get('/reservar-cita', (req, res) => res.render('usuarios/usuario_reservar_cita', { layout: false }));
-router.get('/pre-confirmar', (req, res) => res.render('usuarios/usuario_reservar_cita', { layout: false }));
-router.get('/confirmar-reserva', (req, res) => res.render('usuarios/usuario_confirmar_reserva', { layout: false }));
-router.get('/perfil', (req, res) => res.render('usuarios/usuario_perfil', { layout: false }));
-router.get('/notificaciones', (req, res) => res.render('usuarios/usuario_notificaciones', { layout: false }));
-router.get('/cambiar-password', (req, res) => res.render('usuarios/cambiar_password', { layout: 'layouts/dashboard', title: 'Cambiar contraseña' }));
-router.get('/editar-reserva/:id', (req, res) => res.render('usuarios/usuario_editar_reserva', { layout: 'layouts/dashboard', title: 'Editar reserva', reserva_id: req.params.id }));
-router.get('/confirmar-cita/:id', (req, res) => res.render('usuarios/usuario_confirmar_reserva', { layout: false, reserva_id: req.params.id }));
-router.get('/calificar/:id', (req, res) => res.render('usuarios/usuario_confirmar_reserva', { layout: false, reserva_id: req.params.id }));
+router.get('/tienda', asyncHandler(pageController.tienda));
+router.get('/servicios', pageController.servicios);
+router.get('/peluquerias', asyncHandler(pageController.peluquerias));
+router.get('/reservar-cita', exigirSesion, asyncHandler(pageController.reservarCita));
+router.post('/pre-confirmar', exigirSesion, asyncHandler(pageController.preConfirmar));
+router.post('/confirmar-reserva', exigirSesion, asyncHandler(pageController.confirmarReserva));
+router.get('/perfil', exigirSesion, asyncHandler(pageController.perfil));
+router.post('/perfil', exigirSesion, upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
+router.get('/notificaciones', exigirSesion, (req, res) => res.render('usuarios/usuario_notificaciones', { layout: false, notificaciones: [] }));
+router.post('/notificaciones/leidas', exigirSesion, (req, res) => res.redirect('/notificaciones'));
+router.get('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
+router.post('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
+router.get('/editar-reserva/:id', exigirSesion, asyncHandler(pageController.editarReserva));
+router.post('/editar-reserva/:id', exigirSesion, asyncHandler(pageController.actualizarReserva));
+router.post('/cancelar-reserva/:id', exigirSesion, asyncHandler(pageController.cancelarReserva));
+router.post('/calificar/:id', exigirSesion, asyncHandler(pageController.calificar));
+router.post('/confirmar-cita/:id', exigirSesion, asyncHandler(pageController.confirmarCita));
 
-// ── Carrito ────────────────────────────────────────────────────────────────
-router.get('/carrito', (req, res) => res.render('carrito/carrito', { layout: false, active: 'carrito' }));
-router.get('/carrito/finalizar', (req, res) => res.render('carrito/finalizar_pedido', { layout: false }));
-router.get('/pedido-exitoso/:id', (req, res) => res.render('carrito/pedido_exitoso', { layout: false, pedido_id: req.params.id }));
+router.get('/carrito', asyncHandler(pageController.verCarrito));
+router.post('/carrito/agregar/:id', asyncHandler(pageController.agregarCarrito));
+router.post('/carrito/actualizar/:id', asyncHandler(pageController.actualizarCarrito));
+router.post('/carrito/eliminar/:id', asyncHandler(pageController.eliminarCarrito));
+router.get('/carrito/finalizar', exigirSesion, asyncHandler(pageController.finalizarCompra));
+router.post('/carrito/finalizar', exigirSesion, asyncHandler(pageController.finalizarCompra));
+router.get('/pedido-exitoso/:id', exigirSesion, asyncHandler(pageController.pedidoExitoso));
 
-// ── Peluqueros (barbero) ───────────────────────────────────────────────────
-router.get('/barbero', (req, res) => res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', title: 'Inicio barbero', active: 'inicio' }));
-router.get('/barbero/perfil', (req, res) => res.render('peluqueros/peluquero_perfil', { layout: 'layouts/dashboard', title: 'Perfil barbero', active: 'perfil' }));
-router.get('/barbero/nueva-cita', (req, res) => res.render('peluqueros/peluquero_crear_cita', { layout: 'layouts/dashboard', title: 'Nueva cita', active: 'nueva_cita' }));
-router.get('/barbero/notificaciones', (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', title: 'Notificaciones barbero', active: 'notificaciones' }));
+router.get('/barbero', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoDashboard));
+router.get('/barbero/perfil', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoPerfil));
+router.post('/barbero/perfil', exigirRol('Barbero', 'Admin'), upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
+router.get('/barbero/notificaciones', exigirRol('Barbero', 'Admin'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
+router.get('/barbero/nueva-cita', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoNuevaCita));
+router.post('/barbero/nueva-cita', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoGuardarCita));
+router.post('/barbero/citas/:id/estado', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoEstadoCita));
 
-// ── Administrador ──────────────────────────────────────────────────────────
-router.get('/admin', (req, res) => res.render('administrador/admin_dashboard', { layout: 'layouts/dashboard', title: 'Panel de administración', active: 'dashboard' }));
-router.get('/admin/usuarios', (req, res) => res.render('administrador/admin_usuarios', { layout: 'layouts/dashboard', title: 'Usuarios', active: 'usuarios' }));
-router.get('/admin/usuarios/nuevo', (req, res) => res.render('administrador/admin_formulario_usuario', { layout: 'layouts/dashboard', title: 'Nuevo usuario' }));
-router.get('/admin/usuarios/:id/editar', (req, res) => res.render('administrador/admin_formulario_usuario', { layout: 'layouts/dashboard', title: 'Editar usuario', usuario_id: req.params.id }));
-router.get('/admin/peluqueros', (req, res) => res.render('administrador/admin_listar_peluqueros', { layout: 'layouts/dashboard', title: 'Barberos', active: 'peluqueros' }));
-router.get('/admin/peluqueros/nuevo', (req, res) => res.render('administrador/admin_formulario_peluquero', { layout: 'layouts/dashboard', title: 'Nuevo barbero' }));
-router.get('/admin/peluqueros/:id/editar', (req, res) => res.render('administrador/admin_formulario_peluquero', { layout: 'layouts/dashboard', title: 'Editar barbero', peluquero_id: req.params.id }));
-router.get('/admin/reservas', (req, res) => res.render('administrador/admin_listar_reservas', { layout: 'layouts/dashboard', title: 'Reservas', active: 'reservas' }));
-router.get('/admin/reservas/nueva', (req, res) => res.render('administrador/admin_formulario_reserva', { layout: 'layouts/dashboard', title: 'Nueva reserva' }));
-router.get('/admin/reservas/:id/editar', (req, res) => res.render('administrador/admin_formulario_reserva', { layout: 'layouts/dashboard', title: 'Editar reserva', reserva_id: req.params.id }));
-router.get('/admin/horarios', (req, res) => res.render('administrador/admin_horarios', { layout: 'layouts/dashboard', title: 'Horarios', active: 'horarios' }));
-router.get('/admin/peluquerias', (req, res) => res.render('administrador/admin_peluquerias', { layout: 'layouts/dashboard', title: 'Barberías', active: 'peluquerias' }));
-router.get('/admin/peluquerias/nueva', (req, res) => res.render('administrador/admin_formulario_peluqueria', { layout: 'layouts/dashboard', title: 'Nueva barbería' }));
-router.get('/admin/peluquerias/:id/editar', (req, res) => res.render('administrador/admin_formulario_peluqueria', { layout: 'layouts/dashboard', title: 'Editar barbería', peluqueria_id: req.params.id }));
-router.get('/admin/productos', (req, res) => res.render('administrador/admin_productos', { layout: 'layouts/dashboard', title: 'Productos', active: 'productos' }));
-router.get('/admin/productos/nuevo', (req, res) => res.render('administrador/admin_formulario_producto', { layout: 'layouts/dashboard', title: 'Nuevo producto' }));
-router.get('/admin/productos/:id/editar', (req, res) => res.render('administrador/admin_formulario_producto', { layout: 'layouts/dashboard', title: 'Editar producto', producto_id: req.params.id }));
-router.get('/admin/mensajes', (req, res) => res.render('administrador/admin_mensajes', { layout: 'layouts/dashboard', title: 'Mensajes', active: 'mensajes' }));
-router.get('/admin/notificaciones', (req, res) => res.render('administrador/admin_notificaciones', { layout: 'layouts/dashboard', title: 'Notificaciones', active: 'notificaciones' }));
-router.get('/admin/ingresos', (req, res) => res.render('administrador/admin_listar_ingresos', { layout: 'layouts/dashboard', title: 'Ingresos', active: 'ingresos' }));
+router.get('/admin', exigirRol('Admin'), asyncHandler(pageController.adminDashboard));
+router.get('/admin/perfil', exigirRol('Admin'), (req, res) => res.redirect('/perfil'));
+router.get('/admin/usuarios', exigirRol('Admin'), asyncHandler(pageController.adminUsuarios));
+router.get('/admin/usuarios/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminFormularioUsuario));
+router.post('/admin/usuarios/nuevo', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarUsuario));
+router.get('/admin/usuarios/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioUsuario));
+router.post('/admin/usuarios/:id/editar', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarUsuario));
+router.post('/admin/usuarios/:id/suspender', exigirRol('Admin'), asyncHandler(pageController.adminSuspenderUsuario));
+router.get('/admin/peluqueros', exigirRol('Admin'), asyncHandler(pageController.adminPeluqueros));
+router.get('/admin/peluqueros/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluquero));
+router.post('/admin/peluqueros/nuevo', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarPeluquero));
+router.get('/admin/peluqueros/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluquero));
+router.post('/admin/peluqueros/:id/editar', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarPeluquero));
+router.post('/admin/peluqueros/:id/suspender', exigirRol('Admin'), asyncHandler(pageController.adminSuspenderUsuario));
+router.get('/admin/reservas', exigirRol('Admin'), asyncHandler(pageController.adminReservas));
+router.get('/admin/reservas/nueva', exigirRol('Admin'), asyncHandler(pageController.adminFormularioReserva));
+router.post('/admin/reservas/nueva', exigirRol('Admin'), asyncHandler(pageController.adminGuardarReserva));
+router.get('/admin/reservas/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioReserva));
+router.post('/admin/reservas/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminGuardarReserva));
+router.post('/admin/reservas/:id/cancelar', exigirRol('Admin'), asyncHandler(pageController.adminCancelarReserva));
+router.get('/admin/peluquerias', exigirRol('Admin'), asyncHandler(pageController.adminPeluquerias));
+router.get('/admin/peluquerias/nueva', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluqueria));
+router.post('/admin/peluquerias/nueva', exigirRol('Admin'), asyncHandler(pageController.adminGuardarPeluqueria));
+router.get('/admin/peluquerias/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluqueria));
+router.post('/admin/peluquerias/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminGuardarPeluqueria));
+router.post('/admin/peluquerias/:id/eliminar', exigirRol('Admin'), asyncHandler(pageController.adminEliminarPeluqueria));
+router.get('/admin/productos', exigirRol('Admin'), asyncHandler(pageController.adminProductos));
+router.get('/admin/productos/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminFormularioProducto));
+router.post('/admin/productos/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminGuardarProducto));
+router.get('/admin/productos/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioProducto));
+router.post('/admin/productos/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminGuardarProducto));
+router.post('/admin/productos/:id/eliminar', exigirRol('Admin'), asyncHandler(pageController.adminEliminarProducto));
+router.get('/admin/horarios', exigirRol('Admin'), asyncHandler(pageController.adminHorarios));
+router.post('/admin/horarios', exigirRol('Admin'), asyncHandler((req, res) => req.body.accion === 'crear_bloqueo' ? pageController.adminCrearBloqueo(req, res) : pageController.adminGuardarHorarios(req, res)));
+router.post('/admin/horarios/bloqueos/:id/eliminar', exigirRol('Admin'), asyncHandler(pageController.adminEliminarBloqueo));
+router.get('/admin/mensajes', exigirRol('Admin'), asyncHandler(pageController.adminMensajes));
+router.get('/admin/notificaciones', exigirRol('Admin'), (req, res) => res.render('administrador/admin_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
+router.get('/admin/ingresos', exigirRol('Admin'), asyncHandler(pageController.adminIngresos));
 
 module.exports = router;

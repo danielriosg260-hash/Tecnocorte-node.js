@@ -315,12 +315,10 @@
       var badge = document.getElementById("cart-count");
       if (badge) badge.classList.remove("hidden");
       button.disabled = true;
-      var token = localStorage.getItem('token') || '';
-      fetch(form.action, {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + token,
-          "X-Requested-With": "XMLHttpRequest"
+       fetch(form.action, {
+         method: "POST",
+         headers: {
+           "X-Requested-With": "XMLHttpRequest"
         }
       }).then(function (res) {
         return res.json().then(function (data) {

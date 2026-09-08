@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db": "mongod --dbpath ~/mongodb-data --port 27017 --bind_ip 127.0.0.1",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.24.2",
     "morgan": "^1.11.0",
+    "multer": "^2.3.0",
     "nodemailer": "^9.0.5"
   },
   "devDependencies": {

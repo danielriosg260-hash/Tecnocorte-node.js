@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/Usuario.controller');
+const verificarToken = require('../middleware/auth');
+const exigirRol = require('../middleware/roles');
+
+router.use(verificarToken);
+router.use(exigirRol('Admin'));
 
 //cada ruta enlaza una dirección con una función del controlador.
 

@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const reservaController = require('../controllers/Reserva.controller');
+const verificarToken = require('../middleware/auth');
+
+router.use(verificarToken);
 
 // Rutas de Reserva: cada ruta enlaza una dirección con una función del controlador.
 

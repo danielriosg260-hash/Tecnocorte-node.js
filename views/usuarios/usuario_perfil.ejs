@@ -92,7 +92,7 @@
         </div>
         <div
           class="w-28 h-28 rounded-full mb-6 bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center overflow-hidden">
-          <% if (usuario.foto) { %><img src="<%= usuario.foto %>" alt="Foto de perfil"
+          <% if (usuario.foto && usuario.foto.url) { %><img src="<%= usuario.foto.url %>" alt="Foto de perfil"
             class="w-full h-full object-cover"><% } else { %><span class="material-symbols-outlined text-primary text-6xl">person</span><% } %>
         </div>
         <h1 class="font-headline text-3xl font-bold tracking-tight mb-1"><%= usuario.nombre %>

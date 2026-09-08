@@ -4,18 +4,29 @@ const expressLayouts = require('express-ejs-layouts');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const { connectDB } = require('./config/db');
+const { cargarSesion } = require('./middleware/webAuth');
 
 // Carga las variables del archivo .env (PORT y DATABASE_URL).
 dotenv.config();
+
+if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
+  throw new Error('DATABASE_URL y JWT_SECRET son obligatorios para iniciar TecnoCorte');
+}
+
+if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción');
+}
 
 // Conecta a la base de datos MongoDB antes de arrancar el servidor.
 connectDB();
 
 const app = express();
+app.disable('x-powered-by');
 
 // Middlewares: funciones que se ejecutan antes de llegar a las rutas.
 // express.json() permite recibir datos en formato JSON en el body de las peticiones.
-app.use(express.json());
+app.use(express.json({ limit: '20kb' }));
+app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 
 // Vistas con EJS: motor de plantillas, carpeta de vistas y archivos estáticos (css, imagenes, js).
 app.set('view engine', 'ejs');
@@ -23,6 +34,16 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/base');
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'same-origin',
+    ...(process.env.NODE_ENV === 'production' ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {})
+  });
+  next();
+});
 
 // Helpers disponibles en todas las plantillas EJS.
 app.locals.fmtMoneda = (valor) => {
@@ -146,6 +167,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(cargarSesion);
+
 // morgan muestra en la consola cada petición que llega (solo en desarrollo).
 app.use(morgan('dev'));
 
@@ -160,6 +183,13 @@ app.use('/api/pedidos-producto', require('./routes/PedidoProducto.routes'));
 
 // Páginas EJS (vistas) del sitio web.
 app.use('/', require('./routes/Page.routes'));
+
+app.use((error, req, res, next) => {
+  console.error('Error no controlado:', error.message);
+  if (res.headersSent) return next(error);
+  if (req.path.startsWith('/api/')) return res.status(500).json({ mensaje: 'Error interno del servidor' });
+  return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
+});
 
 // Puerto donde escucha el servidor, se lee del .env.
 const PORT = process.env.PORT || 3000;

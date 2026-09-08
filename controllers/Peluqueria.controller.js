@@ -1,12 +1,18 @@
 const Peluqueria = require('../models/Peluqueria.model');
 
+const camposPeluqueria = (body) => ({
+  nombre: body.nombre,
+  ubicacion: body.ubicacion,
+  telefono: body.telefono
+});
+
 // Controlador de Peluqueria: contiene las funciones que se usan para
 // crear, listar, actualizar y eliminar peluquerías en la base de datos.
 
 // Crea una peluquería nueva. create() es el equivalente de insertOne en mongoose.
 const crear = async (req, res) => {
   try {
-    const peluqueria = await Peluqueria.create(req.body);
+    const peluqueria = await Peluqueria.create(camposPeluqueria(req.body));
     res.status(201).json(peluqueria);
   } catch (error) {
     res.status(400).json({ mensaje: error.message });
@@ -42,7 +48,7 @@ const listarUno = async (req, res) => {
 // con la peluquería ya actualizada.
 const actualizar = async (req, res) => {
   try {
-    const peluqueria = await Peluqueria.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
+    const peluqueria = await Peluqueria.findOneAndUpdate({ _id: req.params.id }, camposPeluqueria(req.body), { new: true, runValidators: true });
     if (!peluqueria) {
       return res.status(404).json({ mensaje: 'Peluquería no encontrada' });
     }

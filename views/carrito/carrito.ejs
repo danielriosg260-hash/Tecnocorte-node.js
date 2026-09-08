@@ -225,8 +225,6 @@
         var headers = {
           "X-Requested-With": "XMLHttpRequest"
         };
-        var token = localStorage.getItem('token');
-        if (token) headers["Authorization"] = "Bearer " + token;
         fetch(form.action, {
           method: "POST",
           body: new URLSearchParams(new FormData(form)),

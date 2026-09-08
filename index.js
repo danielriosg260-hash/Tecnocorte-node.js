@@ -9,19 +9,17 @@ const { cargarSesion } = require('./middleware/webAuth');
 // Carga las variables del archivo .env (PORT y DATABASE_URL).
 dotenv.config();
 
-if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
-  throw new Error('DATABASE_URL y JWT_SECRET son obligatorios para iniciar TecnoCorte');
+if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
+  throw new Error('MONGO_URI (o DATABASE_URL) y JWT_SECRET son obligatorios para iniciar TecnoCorte');
 }
 
 if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción');
 }
 
-// Conecta a la base de datos MongoDB antes de arrancar el servidor.
-connectDB();
-
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 
 // Middlewares: funciones que se ejecutan antes de llegar a las rutas.
 // express.json() permite recibir datos en formato JSON en el body de las peticiones.
@@ -191,9 +189,19 @@ app.use((error, req, res, next) => {
   return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
 });
 
-// Puerto donde escucha el servidor, se lee del .env.
-const PORT = process.env.PORT || 3000;
+// El servidor solo acepta tráfico después de validar la conexión con MongoDB.
+const PORT = process.env.PORT || 3026;
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error(`No se pudo iniciar TecnoCorte: ${error.message}`);
+    process.exitCode = 1;
+  }
+};
+
+void startServer();

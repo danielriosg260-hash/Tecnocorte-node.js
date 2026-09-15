@@ -24,9 +24,11 @@
       <%- include('notificaciones-indicator') %>
       <%- include('carrito-indicator') %>
       <% if (logueado) { %>
-      <% const panelUrl = logueado.rol === 'Admin' ? '/admin' : (logueado.rol === 'Barbero' ? '/barbero' : '/perfil'); %>
-      <% const panelLabel = logueado.rol === 'Admin' ? 'Panel admin' : (logueado.rol === 'Barbero' ? 'Mi panel' : 'Mi cuenta'); %>
+      <% if (logueado.rol === 'Admin' || logueado.rol === 'Barbero') { %>
+      <% const panelUrl = logueado.rol === 'Admin' ? '/admin' : '/barbero'; %>
+      <% const panelLabel = logueado.rol === 'Admin' ? 'Panel admin' : 'Mi panel'; %>
       <a class="pill-text-action hidden sm:inline-flex" href="<%= panelUrl %>"><%= panelLabel %></a>
+      <% } %>
       <a class="pill-text-action hidden sm:inline-flex" href="/perfil">Perfil</a>
       <a class="pill-text-action hidden sm:inline-flex" href="/logout">Salir</a>
       <% } else { %>

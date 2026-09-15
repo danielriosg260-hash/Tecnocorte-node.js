@@ -406,7 +406,7 @@ function seleccionarPeluquero(el) {
   refrescar();
 }
 function seleccionarPeluqueria(el) {
-  document.querySelectorAll(".opt[data-peluqueria]").forEach(o => { o.classList.remove("opt-selected"); o.querySelector(".icon-muted").textContent = "circle"; });
+   document.querySelectorAll(".opt[data-peluqueria]:not([data-peluquero])").forEach(o => { o.classList.remove("opt-selected"); o.querySelector(".icon-muted").textContent = "circle"; });
   el.classList.add("opt-selected");
   el.querySelector(".icon-muted").textContent = "check_circle";
   seleccion.peluqueria = el.dataset.peluqueria;
@@ -440,7 +440,7 @@ function ocultarPasosSiguientes() {
   document.getElementById("bar-peluqueria").classList.add("hidden");
 }
 function cambiarPeluqueria() {
-  document.querySelectorAll(".opt[data-peluqueria]").forEach(o => { o.classList.remove("opt-selected"); o.querySelector(".icon-muted").textContent = "circle"; });
+   document.querySelectorAll(".opt[data-peluqueria]:not([data-peluquero])").forEach(o => { o.classList.remove("opt-selected"); o.querySelector(".icon-muted").textContent = "circle"; });
   seleccion.peluqueria = "";
   seleccion.peluqueriaNombre = "";
   seleccion.peluquero = "";
@@ -569,7 +569,7 @@ function buildHoras() {
 }
 function restaurarSeleccionEnviada() {
   var servicio = document.querySelector('.opt[data-servicio="' + CSS.escape(DATOS_ENVIADOS.get("servicio") || "") + '"]');
-  var peluqueria = document.querySelector('.opt[data-peluqueria="' + CSS.escape(DATOS_ENVIADOS.get("peluqueria") || "") + '"]');
+   var peluqueria = document.querySelector('.opt[data-peluqueria="' + CSS.escape(DATOS_ENVIADOS.get("peluqueria") || "") + '"]:not([data-peluquero])');
   var peluquero = document.querySelector('.opt[data-peluquero="' + CSS.escape(DATOS_ENVIADOS.get("peluquero") || "") + '"]');
   if (servicio) seleccionarServicio(servicio);
   if (peluqueria) seleccionarPeluqueria(peluqueria);
@@ -590,7 +590,7 @@ if (SERVICIO_INICIAL && !DATOS_ENVIADOS.has("servicio")) {
 if (DATOS_ENVIADOS.has("servicio") || DATOS_ENVIADOS.has("peluquero") || DATOS_ENVIADOS.has("peluqueria")) {
   restaurarSeleccionEnviada();
 } else if (PELUQUERIA_INICIAL) {
-  var peluqueriaInicial = document.querySelector('.opt[data-peluqueria="' + CSS.escape(PELUQUERIA_INICIAL) + '"]');
+   var peluqueriaInicial = document.querySelector('.opt[data-peluqueria="' + CSS.escape(PELUQUERIA_INICIAL) + '"]:not([data-peluquero])');
   if (peluqueriaInicial) seleccionarPeluqueria(peluqueriaInicial);
 }
 document.getElementById("form-reserva").addEventListener("submit", function (e) {

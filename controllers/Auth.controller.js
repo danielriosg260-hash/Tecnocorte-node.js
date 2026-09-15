@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario.model');
 const Ingreso = require('../models/Ingreso.model');
 const transporter = require('../config/email');
+const { enviarCorreoBonito } = require('../config/emailTemplate');
+const { guardarCodigo, verificarCodigo } = require('../config/emailVerification');
 const { clearSessionCookie, setSessionCookie } = require('../config/session');
 
 const DUMMY_PASSWORD_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.VbZV5hQ9Qf6yUQxV0n5h8z0fP1w8W8K';
@@ -28,10 +30,11 @@ const datosPublicos = (usuario) => ({
   apellido: usuario.apellido,
   email: usuario.email,
   rol: usuario.rol,
-  activo: usuario.activo
+  activo: usuario.activo,
+  email_verificado: usuario.email_verificado !== false
 });
 
-const enviarCorreo = (opciones) => transporter.sendMail(opciones).catch((error) => {
+const enviarCorreo = (opciones) => enviarCorreoBonito(transporter, opciones).catch((error) => {
   console.error('Error al enviar correo:', error.message);
 });
 
@@ -48,18 +51,20 @@ const registro = async (req, res) => {
     const existe = await Usuario.findOne({ email });
     if (existe) return res.status(400).json({ mensaje: 'El correo ya está registrado' });
 
-    const usuario = await Usuario.create({ nombre, apellido, email, password, telefono });
-    const token = generarToken(usuario._id);
-    setSessionCookie(res, token);
+    const usuario = await Usuario.create({ nombre, apellido, email, password, telefono, email_verificado: false });
+    const codigo = await guardarCodigo(usuario);
 
     void enviarCorreo({
-      from: `"TecnoCorte" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '¡Bienvenido a TecnoCorte!',
-      html: `<h1>¡Hola ${escaparHtml(nombre)}!</h1><p>Tu cuenta ha sido creada exitosamente.</p><p><strong>Correo:</strong> ${escaparHtml(email)}</p>`
+      subject: 'Verifica tu correo de TecnoCorte',
+      title: 'Verifica tu correo',
+      preheader: 'Tu código de verificación vence en 15 minutos.',
+      greeting: `¡Hola ${nombre}!`,
+      content: `<p>Tu cuenta ha sido creada. Usa este código para activarla:</p><div style="margin:26px 0;padding:18px;text-align:center;background:#f3ead6;border:1px solid #d6ad42;border-radius:12px"><strong style="color:#6d5314;font-size:34px;letter-spacing:8px">${codigo}</strong></div><p>El código vence en 15 minutos.</p>`,
+      text: `Tu código de verificación es ${codigo}. Vence en 15 minutos.`
     });
 
-    return res.status(201).json({ mensaje: 'Usuario registrado correctamente', token, usuario: datosPublicos(usuario) });
+    return res.status(201).json({ mensaje: 'Cuenta creada. Revisa tu correo para verificarla.', verificacion_requerida: true, usuario: datosPublicos(usuario) });
   } catch (error) {
     if (error.code === 11000) return res.status(400).json({ mensaje: 'El correo ya está registrado' });
     return res.status(400).json({ mensaje: 'No se pudo completar el registro' });
@@ -83,22 +88,40 @@ const login = async (req, res) => {
     if (!usuario || !valida || usuario.activo === false) {
       return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
     }
+    if (usuario.email_verificado === false) return res.status(403).json({ mensaje: 'Verifica tu correo antes de iniciar sesión.', verificacion_requerida: true, email: usuario.email });
 
     const token = generarToken(usuario._id);
     setSessionCookie(res, token);
     void Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
 
     void enviarCorreo({
-      from: `"TecnoCorte" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Inicio de sesión en tu cuenta',
-      html: `<h1>Hola ${escaparHtml(usuario.nombre)}</h1><p>Se ha detectado un inicio de sesión en tu cuenta de TecnoCorte.</p><p><strong>Fecha:</strong> ${escaparHtml(new Date().toLocaleString('es-CO'))}</p>`
+      title: 'Inicio de sesión confirmado',
+      preheader: 'Se detectó un nuevo inicio de sesión.',
+      greeting: `Hola ${usuario.nombre},`,
+      content: `<p>Se ha detectado un inicio de sesión en tu cuenta de TecnoCorte.</p><p><strong>Fecha:</strong> ${escaparHtml(new Date().toLocaleString('es-CO'))}</p>`,
+      text: 'Se ha detectado un inicio de sesión en tu cuenta.'
     });
 
     return res.status(200).json({ mensaje: 'Inicio de sesión exitoso', token, usuario: datosPublicos(usuario) });
   } catch {
     return res.status(500).json({ mensaje: 'No se pudo iniciar sesión' });
   }
+};
+
+const verificarEmail = async (req, res) => {
+  const email = normalizarEmail(req.body.email);
+  const codigo = String(req.body.codigo || '').trim();
+  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira');
+  if (!usuario || !/^\d{6}$/.test(codigo) || !verificarCodigo(usuario, codigo)) return res.status(400).json({ mensaje: 'El código no es válido o ya expiró.' });
+  usuario.email_verificado = true;
+  usuario.email_verificacion_token = undefined;
+  usuario.email_verificacion_expira = undefined;
+  await usuario.save();
+  const token = generarToken(usuario._id);
+  setSessionCookie(res, token);
+  return res.status(200).json({ mensaje: 'Correo verificado correctamente.', token, usuario: datosPublicos(usuario) });
 };
 
 const logout = (req, res) => {
@@ -108,4 +131,4 @@ const logout = (req, res) => {
 
 const perfil = async (req, res) => res.status(200).json({ usuario: req.usuario });
 
-module.exports = { datosPublicos, generarToken, login, logout, normalizarEmail, perfil, registro };
+module.exports = { datosPublicos, generarToken, login, logout, normalizarEmail, perfil, registro, verificarEmail };

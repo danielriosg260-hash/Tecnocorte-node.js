@@ -15,7 +15,10 @@ const usuarioSchema = new mongoose.Schema({
     public_id: { type: String, default: '' }
   },
   resetPasswordToken: { type: String, select: false },
-  resetPasswordExpires: { type: Date, select: false }
+  resetPasswordExpires: { type: Date, select: false },
+  email_verificado: { type: Boolean, default: true },
+  email_verificacion_token: { type: String, select: false },
+  email_verificacion_expira: { type: Date, select: false }
 }, { timestamps: true });
 
 usuarioSchema.virtual('fecha_creacion').get(function () { return this.createdAt; });

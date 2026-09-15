@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const transporter = require('../config/email');
+const { enviarCorreoBonito, escapeHtml: escaparHtml } = require('../config/emailTemplate');
+const { guardarCodigo, enviarCodigo, verificarCodigo } = require('../config/emailVerification');
 const Usuario = require('../models/Usuario.model');
 const Producto = require('../models/Producto.model');
 const Peluqueria = require('../models/Peluqueria.model');
@@ -54,6 +56,7 @@ const login = async (req, res) => {
     if (!usuario || usuario.activo === false || !(await usuario.compararPassword(password))) {
       return renderLogin(req, res, 'Correo o contraseña incorrectos.');
     }
+    if (usuario.email_verificado === false) return renderLogin(req, res, 'Verifica tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.');
     setSessionCookie(res, generarToken(usuario._id));
     void Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
     const requested = req.body.next || req.query.next;
@@ -70,9 +73,10 @@ const registro = async (req, res) => {
     if (!values.nombre || !values.apellido || !email || typeof values.password !== 'string' || values.password.length < 8) {
       return res.status(400).render('publicos/registro', { layout: false, error: 'Completa los datos y usa una contraseña de al menos 8 caracteres.', form_post: new URLSearchParams(values).toString() });
     }
-    const usuario = await Usuario.create({ nombre: values.nombre, apellido: values.apellido, email, password: values.password, telefono: values.telefono });
-    setSessionCookie(res, generarToken(usuario._id));
-    return res.redirect(values.next ? nextUrl(values.next) : '/perfil');
+    const usuario = await Usuario.create({ nombre: values.nombre, apellido: values.apellido, email, password: values.password, telefono: values.telefono, email_verificado: false });
+    const codigo = await guardarCodigo(usuario);
+    await enviarCodigo(usuario, codigo);
+    return res.redirect(`/verificar-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(values.next || '')}`);
   } catch (error) {
     return res.status(400).render('publicos/registro', { layout: false, error: errorMessage(error, 'No se pudo crear la cuenta.'), form_post: new URLSearchParams(values).toString() });
   }
@@ -81,6 +85,31 @@ const registro = async (req, res) => {
 const logout = (req, res) => {
   clearSessionCookie(res);
   res.redirect('/');
+};
+
+const verificarEmailWeb = async (req, res) => {
+  const email = normalizarEmail(req.body.email || req.query.email);
+  const codigo = String(req.body.codigo || '').trim();
+  const next = nextUrl(req.body.next || req.query.next || '');
+  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira');
+  if (!usuario || !/^\d{6}$/.test(codigo) || !verificarCodigo(usuario, codigo)) return res.status(400).render('publicos/verificar_email', { layout: false, email, next, error: 'El código no es válido o ya expiró.', enviado: false });
+  usuario.email_verificado = true;
+  usuario.email_verificacion_token = undefined;
+  usuario.email_verificacion_expira = undefined;
+  await usuario.save();
+  setSessionCookie(res, generarToken(usuario._id));
+  return res.redirect(next !== '/' ? next : dashboardUrl(usuario));
+};
+
+const reenviarVerificacionWeb = async (req, res) => {
+  const email = normalizarEmail(req.body.email || req.query.email);
+  const next = nextUrl(req.body.next || req.query.next || '');
+  const usuario = await Usuario.findOne({ email });
+  if (usuario && usuario.email_verificado === false) {
+    const codigo = await guardarCodigo(usuario);
+    await enviarCodigo(usuario, codigo);
+  }
+  return res.render('publicos/verificar_email', { layout: false, email, next, enviado: true, error: '' });
 };
 
 const dashboard = (req, res) => res.redirect(dashboardUrl(req.usuario));
@@ -95,11 +124,15 @@ const solicitarRecuperacion = async (req, res) => {
       usuario.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
       await usuario.save();
       const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-      await transporter.sendMail({
-        from: `"TecnoCorte" <${process.env.EMAIL_USER}>`,
+      await enviarCorreoBonito(transporter, {
         to: usuario.email,
         subject: 'Restablece tu contraseña de TecnoCorte',
-        html: `<p>Solicitaste cambiar tu contraseña.</p><p><a href="${base}/restablecer-password/${token}">Crear nueva contraseña</a></p><p>Este enlace vence en una hora.</p>`
+        title: 'Restablece tu contraseña',
+        preheader: 'Tu enlace de recuperación vence en una hora.',
+        greeting: `Hola ${usuario.nombre},`,
+        content: '<p>Solicitaste cambiar tu contraseña de TecnoCorte.</p><p>Usa el botón para crear una nueva contraseña. Por seguridad, el enlace vence en una hora.</p>',
+        action: { label: 'Restablecer contraseña', url: `${base}/restablecer-password/${token}` },
+        text: 'Solicitaste cambiar tu contraseña. Este enlace vence en una hora.'
       }).catch((error) => console.error('Error al enviar recuperación:', error.message));
     }
   }
@@ -130,7 +163,15 @@ const ayuda = async (req, res) => {
   const { nombre, email, asunto, mensaje } = req.body;
   if (!nombre || !email || !asunto || !mensaje) return res.status(400).render('publicos/ayuda', { layout: false, error: 'Completa todos los campos.', form_post: new URLSearchParams({ nombre: nombre || '', email: email || '', asunto: asunto || '', mensaje: mensaje || '' }).toString() });
   await Mensaje.create({ nombre, email: normalizarEmail(email), asunto, mensaje });
-  await transporter.sendMail({ from: `"${nombre}" <${email}>`, to: process.env.EMAIL_USER, subject: `[TecnoCorte] ${asunto}`, text: mensaje }).catch((error) => console.error('Error al enviar contacto:', error.message));
+  await enviarCorreoBonito(transporter, {
+    to: process.env.EMAIL_USER,
+    subject: `[TecnoCorte] ${asunto}`,
+    title: asunto,
+    preheader: 'Nuevo mensaje recibido desde el formulario de contacto.',
+    greeting: `Mensaje de ${nombre}`,
+    content: `<p>${escaparHtml(mensaje).replace(/\n/g, '<br>')}</p><p><strong>Correo de contacto:</strong> ${escaparHtml(email)}</p>`,
+    text: mensaje
+  }).catch((error) => console.error('Error al enviar contacto:', error.message));
   return res.render('publicos/ayuda', { layout: false, exito: 'Tu mensaje fue enviado correctamente.' });
 };
 
@@ -228,17 +269,30 @@ const notificarReserva = async (reservaId, evento) => {
   const destinatarios = [reserva.cliente?.email, reserva.peluquero?.email].filter(Boolean);
   if (!destinatarios.length || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   const asunto = `TecnoCorte: ${evento} - ${reserva.servicio || 'cita'}`;
-  const texto = `Hola,\n\nLa cita de ${reserva.servicio || 'servicio'} para el ${fecha} a las ${reserva.hora} en ${reserva.peluqueria?.nombre || 'TecnoCorte'} fue ${evento.toLowerCase()}.\n\nSi necesitas modificarla, entra a tu panel de TecnoCorte.`;
-  await Promise.allSettled(destinatarios.map((to) => transporter.sendMail({ from: `TecnoCorte <${process.env.EMAIL_USER}>`, to, subject: asunto, text: texto })));
+  const texto = `La cita de ${reserva.servicio || 'servicio'} para el ${fecha} a las ${reserva.hora} en ${reserva.peluqueria?.nombre || 'TecnoCorte'} fue ${evento.toLowerCase()}.`;
+  await Promise.allSettled(destinatarios.map((to) => enviarCorreoBonito(transporter, {
+    to,
+    subject: asunto,
+    title: `Cita ${evento}`,
+    preheader: `Actualización de tu cita de ${reserva.servicio || 'servicio'}.`,
+    greeting: 'Hola,',
+    content: `<p>${escaparHtml(texto)}</p><p>Si necesitas modificarla, entra a tu panel de TecnoCorte.</p>`,
+    action: { label: 'Abrir mi panel', url: `${String(process.env.APP_URL || '').replace(/\/$/, '')}/dashboard` },
+    text: texto
+  })));
 };
 const notificarSuspension = async (reservaId) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
   if (!reserva?.cliente?.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
-  await transporter.sendMail({
-    from: `TecnoCorte <${process.env.EMAIL_USER}>`,
+  await enviarCorreoBonito(transporter, {
     to: reserva.cliente.email,
     subject: 'TecnoCorte: debes reprogramar tu cita',
-    text: `Hola ${reserva.cliente.nombre}, el barbero ${reserva.peluquero?.nombre || ''} no está disponible para tu cita del ${new Date(reserva.fecha).toLocaleDateString('es-CO')} a las ${reserva.hora}. Entra a tu perfil para modificarla y elegir otro barbero.`
+    title: 'Debes reprogramar tu cita',
+    preheader: 'Tu barbero ya no está disponible para esta cita.',
+    greeting: `Hola ${reserva.cliente.nombre},`,
+    content: `<p>El barbero ${escaparHtml(reserva.peluquero?.nombre || '')} no está disponible para tu cita del ${new Date(reserva.fecha).toLocaleDateString('es-CO')} a las ${escaparHtml(reserva.hora)}.</p><p>Entra a tu perfil para modificarla y elegir otro barbero.</p>`,
+    action: { label: 'Reprogramar cita', url: `${String(process.env.APP_URL || '').replace(/\/$/, '')}/perfil` },
+    text: 'Tu barbero ya no está disponible. Entra a tu perfil para reprogramar tu cita.'
   }).catch(() => {});
 };
 
@@ -716,6 +770,6 @@ module.exports = {
   adminHorarios, adminPeluquerias, adminPeluqueros, adminProductos, adminReservas, adminSuspenderUsuario, adminUsuarios,
   adminCrearBloqueo, adminIngresos, adminMensajes, ayuda, actualizarCarrito, actualizarPerfil, actualizarReserva, barberoDashboard, barberoEstadoCita,
   barberoActualizarReserva, barberoEditarReserva, barberoGuardarCita, barberoNuevaCita, barberoPerfil, cambiarPassword, cancelarReserva, calificar, confirmarCita, confirmarReserva,
-  dashboard, editarReserva, eliminarCarrito, finalizarCompra, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, registro,
-  reservarCita, restablecerPassword, renderLogin, renderReset, solicitarRecuperacion, servicios, tienda, verCarrito
+  dashboard, editarReserva, eliminarCarrito, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
+  reservarCita, restablecerPassword, renderLogin, renderReset, solicitarRecuperacion, servicios, tienda, verificarEmailWeb, verCarrito
 };

@@ -2,13 +2,9 @@ const Reserva = require('../models/Reserva.model');
 const Usuario = require('../models/Usuario.model');
 const Peluqueria = require('../models/Peluqueria.model');
 const transporter = require('../config/email');
+const { enviarCorreoBonito, escapeHtml } = require('../config/emailTemplate');
 
-const escaparHtml = (value = '') => String(value)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&#039;');
+const escaparHtml = escapeHtml;
 
 // Controlador de Reserva: contiene las funciones que se usan para
 // crear, listar, actualizar y eliminar reservas en la base de datos.
@@ -38,20 +34,14 @@ const crear = async (req, res) => {
       const nombrePeluqueria = peluqueria ? peluqueria.nombre : 'la peluquería';
 
       try {
-        await transporter.sendMail({
-          from: `"TecnoCorte" <${process.env.EMAIL_USER}>`,
+        await enviarCorreoBonito(transporter, {
           to: clienteUsuario.email,
           subject: 'Confirmación de tu reserva en TecnoCorte',
-          html: `
-            <h1>¡Hola ${escaparHtml(clienteUsuario.nombre)}!</h1>
-            <p>Tu cita ha sido reservada exitosamente.</p>
-            <p><strong>Peluquería:</strong> ${escaparHtml(nombrePeluqueria)}</p>
-            <p><strong>Fecha:</strong> ${escaparHtml(fechaFormateada)}</p>
-            <p><strong>Hora:</strong> ${escaparHtml(reserva.hora)}</p>
-            <p><strong>Servicio:</strong> ${escaparHtml(reserva.servicio || 'No especificado')}</p>
-            <p><strong>Estado:</strong> ${escaparHtml(reserva.estado)}</p>
-            <p>Te esperamos en TecnoCorte.</p>
-          `
+          title: 'Tu cita está reservada',
+          preheader: 'Hemos guardado tu cita en TecnoCorte.',
+          greeting: `¡Hola ${clienteUsuario.nombre}!`,
+          content: `<p>Tu cita ha sido reservada exitosamente.</p><p><strong>Peluquería:</strong> ${escaparHtml(nombrePeluqueria)}<br><strong>Fecha:</strong> ${escaparHtml(fechaFormateada)}<br><strong>Hora:</strong> ${escaparHtml(reserva.hora)}<br><strong>Servicio:</strong> ${escaparHtml(reserva.servicio || 'No especificado')}<br><strong>Estado:</strong> ${escaparHtml(reserva.estado)}</p><p>Te esperamos en TecnoCorte.</p>`,
+          text: `Tu cita fue reservada en ${nombrePeluqueria} el ${fechaFormateada} a las ${reserva.hora}.`
         });
       } catch (emailError) {
         console.error('Error al enviar correo de reserva:', emailError.message);

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verifica tu correo | TecnoCorte</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
+  <%- include('../partials/tema') %>
+</head>
+<body class="min-h-screen bg-surface text-on-surface antialiased">
+  <%- include('../partials/site-nav', { active: '' }) %>
+  <main class="mx-auto flex min-h-screen w-full max-w-xl items-center px-6 py-28">
+    <section class="w-full rounded-[28px] border border-outline-variant/20 bg-surface-container-low p-8 text-center shadow-2xl md:p-12">
+      <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-surface-container-high p-3">
+        <img src="/images/Logo.png" alt="TecnoCorte" class="h-full w-full object-contain">
+      </div>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Seguridad de tu cuenta</p>
+      <h1 class="mb-4 font-headline text-3xl text-primary-container">Verifica tu correo</h1>
+      <p class="mb-8 text-sm leading-6 text-on-surface-variant">Enviamos un código de 6 dígitos a <strong class="text-on-surface"><%= email || 'tu correo' %></strong>. Tiene una validez de 15 minutos.</p>
+      <% if (error) { %><div class="mb-5 rounded-lg border border-error/30 bg-error-container/20 p-3 text-sm text-error" role="alert"><%= error %></div><% } %>
+      <% if (enviado) { %><div class="mb-5 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-primary">Si el correo existe y aún no está verificado, enviamos un nuevo código.</div><% } %>
+      <form method="post" action="/verificar-email" class="space-y-4">
+        <input type="hidden" name="email" value="<%= email %>">
+        <input type="hidden" name="next" value="<%= next || '' %>">
+        <label class="sr-only" for="codigo">Código de verificación</label>
+        <input id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000" class="w-full rounded-xl border border-outline-variant/30 bg-surface-container-high px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-on-surface outline-none focus:border-primary" />
+        <button type="submit" class="w-full rounded-xl bg-primary px-5 py-4 font-bold uppercase tracking-widest text-on-primary transition hover:opacity-90">Verificar correo</button>
+      </form>
+      <form method="post" action="/verificar-email/reenviar" class="mt-5">
+        <input type="hidden" name="email" value="<%= email %>">
+        <input type="hidden" name="next" value="<%= next || '' %>">
+        <button type="submit" class="text-sm font-semibold text-primary hover:underline">¿No recibiste el código? Reenviar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

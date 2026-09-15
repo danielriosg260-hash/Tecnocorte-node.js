@@ -1,9 +1,9 @@
 <% // Layout: dashboard %>
-<main class="max-w-2xl mx-auto p-8 md:p-12"><a class="text-primary" href="/perfil">←
+<main class="max-w-2xl mx-auto p-8 md:p-12"><a class="text-primary" href="<%= backUrl || '/perfil' %>">←
         Volver a mi perfil</a>
     <div class="bg-surface-container-low rounded-xl p-8 mt-6">
         <h1 class="font-headline text-3xl mb-6">Modificar cita</h1><% if (!reserva.peluquero.activo) { %><div class="mb-4 flex items-start gap-2 rounded-md border border-error/30 bg-error-container/15 p-3 text-sm text-error"><span class="material-symbols-outlined text-base">person_off</span><span>Tu barbero está suspendido y no podrá atender esta cita. Selecciona otro barbero para reagendarla.</span></div><% } %><% if (error) { %><p class="text-error mb-4"><%= error %>
-        </p><% } %><form method="post" class="space-y-5"><!-- csrf: auth JWT --><select name="servicio"
+        </p><% } %><form method="post" action="<%= formAction || '' %>" class="space-y-5"><!-- csrf: auth JWT --><select name="servicio"
                 class="w-full bg-surface-container-high p-3 rounded"><% servicios.forEach(function(servicio) { %><option
                     value="<%= servicio.nombre %>" <% if (reserva.servicio == servicio.nombre) { %>selected<% } %>><%= servicio.nombre %> · <%= servicio.duracion %></option><% }); %></select><select name="peluqueria" id="peluqueria-editar"
                 class="w-full bg-surface-container-high p-3 rounded" onchange="filtrarBarberosEditar()"><% peluquerias.forEach(function(peluqueria) { %><option

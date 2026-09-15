@@ -1,12 +1,23 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const { extname } = path;
 const pageController = require('../controllers/Page.controller');
 const rateLimitLogin = require('../middleware/rateLimit');
 const { exigirRol, exigirSesion } = require('../middleware/webAuth');
 const asyncHandler = require('../middleware/asyncHandler');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`)
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 router.get('/', (req, res) => res.render('publicos/index', { layout: false, active: 'inicio' }));
 router.get('/login', (req, res) => pageController.renderLogin(req, res));
@@ -14,6 +25,7 @@ router.post('/login', rateLimitLogin, asyncHandler(pageController.login));
 router.get('/registro', (req, res) => res.render('publicos/registro', { layout: false, proximo: req.query.next || '' }));
 router.post('/registro', asyncHandler(pageController.registro));
 router.get('/logout', pageController.logout);
+router.get('/dashboard', exigirSesion, pageController.dashboard);
 router.get('/ayuda', (req, res) => res.render('publicos/ayuda', { layout: false }));
 router.post('/ayuda', asyncHandler(pageController.ayuda));
 router.get('/recuperar-password', (req, res) => res.render('publicos/recuperar_password', { layout: 'layouts/base', title: 'Recuperar contraseña', enviado: false }));
@@ -49,13 +61,15 @@ router.get('/carrito/finalizar', exigirSesion, asyncHandler(pageController.final
 router.post('/carrito/finalizar', exigirSesion, asyncHandler(pageController.finalizarCompra));
 router.get('/pedido-exitoso/:id', exigirSesion, asyncHandler(pageController.pedidoExitoso));
 
-router.get('/barbero', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoDashboard));
-router.get('/barbero/perfil', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoPerfil));
-router.post('/barbero/perfil', exigirRol('Barbero', 'Admin'), upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
-router.get('/barbero/notificaciones', exigirRol('Barbero', 'Admin'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
-router.get('/barbero/nueva-cita', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoNuevaCita));
-router.post('/barbero/nueva-cita', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoGuardarCita));
-router.post('/barbero/citas/:id/estado', exigirRol('Barbero', 'Admin'), asyncHandler(pageController.barberoEstadoCita));
+router.get('/barbero', exigirRol('Barbero'), asyncHandler(pageController.barberoDashboard));
+router.get('/barbero/perfil', exigirRol('Barbero'), asyncHandler(pageController.barberoPerfil));
+router.post('/barbero/perfil', exigirRol('Barbero'), upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
+router.get('/barbero/notificaciones', exigirRol('Barbero'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
+router.get('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoNuevaCita));
+router.post('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoGuardarCita));
+router.get('/barbero/citas/:id/editar', exigirRol('Barbero'), asyncHandler(pageController.barberoEditarReserva));
+router.post('/barbero/citas/:id', exigirRol('Barbero'), asyncHandler(pageController.barberoActualizarReserva));
+router.post('/barbero/citas/:id/estado', exigirRol('Barbero'), asyncHandler(pageController.barberoEstadoCita));
 
 router.get('/admin', exigirRol('Admin'), asyncHandler(pageController.adminDashboard));
 router.get('/admin/perfil', exigirRol('Admin'), (req, res) => res.redirect('/perfil'));

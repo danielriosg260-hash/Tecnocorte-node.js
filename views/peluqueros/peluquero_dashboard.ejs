@@ -112,6 +112,11 @@
 
           <div class="flex items-center gap-3">
             <% if (cita.estado === 'Pendiente' || cita.estado === 'Confirmada') { %>
+            <a href="/barbero/citas/<%= cita.id %>/editar" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
+              <span class="material-symbols-outlined text-[14px]">edit_calendar</span> Modificar
+            </a>
+            <% } %>
+            <% if (cita.estado === 'Pendiente' || cita.estado === 'Confirmada') { %>
             <form method="post" action="/barbero/citas/<%= cita.id %>/estado" class="flex items-center gap-2">
               <!-- csrf: auth JWT -->
               <input type="hidden" name="estado" value="Completada">

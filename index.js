@@ -32,6 +32,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/base');
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 app.use((req, res, next) => {
   res.set({
@@ -198,7 +199,7 @@ const startServer = async () => {
     await connectDB();
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Servidor corriendo en el puerto ${PORT}`);
+      console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
     });
 
   } catch (error) {

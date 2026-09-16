@@ -16,6 +16,7 @@ const usuarioSchema = new mongoose.Schema({
   },
   resetPasswordToken: { type: String, select: false },
   resetPasswordExpires: { type: Date, select: false },
+  tokenVersion: { type: Number, default: 0, min: 0, select: false },
   email_verificado: { type: Boolean, default: true },
   email_verificacion_token: { type: String, select: false },
   email_verificacion_expira: { type: Date, select: false }
@@ -28,6 +29,7 @@ usuarioSchema.set('toJSON', { virtuals: true });
 // Antes de guardar, hashea la password si fue modificada
 usuarioSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
+  if (!this.isNew) this.tokenVersion = (this.tokenVersion || 0) + 1;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();

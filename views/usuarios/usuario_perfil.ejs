@@ -76,8 +76,8 @@
         </a><a href="/perfil"
           class="text-primary hover:text-primary-container transition-colors" title="Perfil"><span
             class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
-        </a><a href="/logout"
-          class="text-on-surface-variant hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">Salir</a>
+         </a><form method="post" action="/logout" class="inline"><button type="submit"
+           class="text-on-surface-variant hover:text-error transition-colors text-xs font-bold uppercase tracking-widest">Salir</button></form>
       </div>
     </div>
   </nav>
@@ -160,11 +160,11 @@
         </form>
         <a href="/cambiar-password" class="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant/30 py-3 text-sm font-semibold uppercase tracking-widest text-primary transition-colors hover:border-primary"><span class="material-symbols-outlined text-base">lock_reset</span>Cambiar contraseña</a>
       </div>
-      <a href="/logout"
+      <form method="post" action="/logout"><button type="submit"
         class="flex items-center justify-center gap-2 w-full py-4 text-error hover:text-error/80 transition-colors group"><span
           class="material-symbols-outlined transition-transform group-hover:-translate-x-1">logout</span><span
           class="text-sm uppercase tracking-widest font-semibold">Cerrar Sesión</span>
-      </a>
+      </button></form>
     </div>
     <!-- Right Column -->
     <div class="lg:col-span-8 flex flex-col gap-12">

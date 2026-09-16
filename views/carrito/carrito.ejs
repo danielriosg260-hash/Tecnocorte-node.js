@@ -68,9 +68,8 @@
       </div>
       <div class="flex items-center space-x-6"><button data-theme-toggle onclick="toggleTheme()" class="text-primary transition-all duration-300 hover:text-primary-container active:scale-90" title="Activar tema claro" type="button"><span class="material-symbols-outlined theme-icon">light_mode</span></button><%- include('../partials/notificaciones-indicator') %><% if (logueado) { %><a
           href="/perfil"
-          class="text-on-surface-variant hover:text-primary transition-colors font-bold uppercase tracking-widest">Perfil</a><a
-          href="/logout"
-          class="text-on-surface-variant hover:text-primary transition-colors font-bold uppercase tracking-widest">Salir</a><% } else { %><a href="/login"
+           class="text-on-surface-variant hover:text-primary transition-colors font-bold uppercase tracking-widest">Perfil</a><form method="post" action="/logout" class="inline"><button type="submit"
+           class="text-on-surface-variant hover:text-primary transition-colors font-bold uppercase tracking-widest">Salir</button></form><% } else { %><a href="/login"
           class="text-on-surface-variant hover:text-primary transition-colors font-bold uppercase tracking-widest">Ingresar</a><% } %><%- include('../partials/carrito-indicator') %>
       </div>
     </div>

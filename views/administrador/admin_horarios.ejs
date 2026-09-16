@@ -4,6 +4,7 @@
   <header class="mb-10">
     <h1 class="font-headline text-4xl text-primary">Horarios de atención</h1>
     <p class="text-on-surface-variant mt-2">Elige los días laborales y el horario en el que se pueden agendar citas por peluquería.</p>
+    <% if (error) { %><p class="mt-4 rounded-lg border border-error/40 bg-error-container/20 p-3 text-sm text-error"><%= error %></p><% } %>
   </header>
 
   <div class="mb-8 flex flex-wrap gap-3">

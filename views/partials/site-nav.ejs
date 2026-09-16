@@ -31,7 +31,7 @@
       <% } %>
       <% const profileUrl = logueado.rol === 'Admin' ? '/admin/perfil' : logueado.rol === 'Barbero' ? '/barbero/perfil' : '/perfil'; %>
       <a class="pill-text-action hidden sm:inline-flex" href="<%= profileUrl %>">Perfil</a>
-      <a class="pill-text-action hidden sm:inline-flex" href="/logout">Salir</a>
+      <form method="post" action="/logout" class="hidden sm:inline-flex"><button type="submit" class="pill-text-action">Salir</button></form>
       <% } else { %>
       <a class="pill-text-action hidden sm:inline-flex" href="/login">Ingresar</a>
       <% } %>

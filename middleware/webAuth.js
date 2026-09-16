@@ -15,9 +15,10 @@ const cargarSesion = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const usuario = await Usuario.findById(decoded.id).select('-password');
-    if (usuario && usuario.activo !== false) {
+    const usuario = await Usuario.findById(decoded.id).select('-password +tokenVersion');
+    if (usuario && usuario.activo !== false && (decoded.tokenVersion ?? 0) === (usuario.tokenVersion || 0)) {
       req.usuario = usuario;
+      res.set('Cache-Control', 'private, no-store');
       res.locals.logueado = usuario;
       res.locals.usuario = usuario;
       res.locals.usuario_actual = usuario;
@@ -41,4 +42,23 @@ const exigirRol = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { cargarSesion, exigirRol, exigirSesion };
+const protegerCSRF = (req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  if (req.headers.authorization?.startsWith('Bearer ')) return next();
+
+  const origen = req.get('origin');
+  const referente = req.get('referer');
+  const host = req.get('host');
+  const mismoOrigen = (valor) => {
+    try {
+      return new URL(valor).host === host;
+    } catch {
+      return false;
+    }
+  };
+
+  if ((origen && mismoOrigen(origen)) || (!origen && referente && mismoOrigen(referente))) return next();
+  return res.status(403).send('Solicitud rechazada por protección CSRF.');
+};
+
+module.exports = { cargarSesion, exigirRol, exigirSesion, protegerCSRF };

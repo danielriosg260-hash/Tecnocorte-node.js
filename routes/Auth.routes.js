@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/Auth.controller');
 const verificarToken = require('../middleware/auth');
 const limitarLogin = require('../middleware/rateLimit');
+const { limitarVerificacion } = limitarLogin;
 
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
@@ -11,7 +12,7 @@ router.use((req, res, next) => {
 
 // Registro de usuario nuevo
 router.post('/registro', authController.registro);
-router.post('/verificar-email', authController.verificarEmail);
+router.post('/verificar-email', limitarVerificacion, authController.verificarEmail);
 
 // Inicio de sesión
 router.post('/login', limitarLogin, authController.login);

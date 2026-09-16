@@ -118,10 +118,10 @@ const crear = async (req, res) => {
 const listarTodos = async (req, res) => {
   try {
     const filtro = filtroPropietario(req.usuario);
-    const reservas = await Reserva.find(filtro).populate('cliente').populate('peluqueria').populate('peluquero');
+    const reservas = await Reserva.find(filtro).populate('cliente', 'nombre apellido email telefono rol').populate('peluqueria', 'nombre ubicacion telefono').populate('peluquero', 'nombre apellido email telefono rol');
     res.status(200).json(reservas);
   } catch (error) {
-    res.status(500).json({ mensaje: error.message });
+    res.status(500).json({ mensaje: 'No se pudieron cargar las reservas' });
   }
 };
 
@@ -129,13 +129,13 @@ const listarTodos = async (req, res) => {
 // con la condición ({ _id: req.params.id }).
 const listarUno = async (req, res) => {
   try {
-    const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) }).populate('cliente').populate('peluqueria').populate('peluquero');
+    const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) }).populate('cliente', 'nombre apellido email telefono rol').populate('peluqueria', 'nombre ubicacion telefono').populate('peluquero', 'nombre apellido email telefono rol');
     if (!reserva) {
       return res.status(404).json({ mensaje: 'Reserva no encontrada' });
     }
     res.status(200).json(reserva);
   } catch (error) {
-    res.status(500).json({ mensaje: error.message });
+    res.status(500).json({ mensaje: 'No se pudo cargar la reserva' });
   }
 };
 
@@ -190,7 +190,7 @@ const eliminar = async (req, res) => {
     }
     res.status(200).json({ mensaje: 'Reserva eliminada correctamente' });
   } catch (error) {
-    res.status(500).json({ mensaje: error.message });
+    res.status(500).json({ mensaje: 'No se pudo eliminar la reserva' });
   }
 };
 

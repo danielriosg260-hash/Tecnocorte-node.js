@@ -18,8 +18,8 @@ const escaparHtml = (value = '') => String(value)
 
 const normalizarEmail = (email) => typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-const generarToken = (id) => jwt.sign(
-  { id },
+const generarToken = (id, tokenVersion = 0) => jwt.sign(
+  { id, tokenVersion },
   process.env.JWT_SECRET,
   { expiresIn: process.env.JWT_EXPIRE || '7d' }
 );
@@ -80,7 +80,7 @@ const login = async (req, res) => {
       return res.status(400).json({ mensaje: 'Ingresa correo y contraseña' });
     }
 
-    const usuario = await Usuario.findOne({ email }).select('+password');
+    const usuario = await Usuario.findOne({ email }).select('+password +tokenVersion');
     const valida = usuario
       ? await usuario.compararPassword(password)
       : await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
@@ -90,7 +90,7 @@ const login = async (req, res) => {
     }
     if (usuario.email_verificado === false) return res.status(403).json({ mensaje: 'Verifica tu correo antes de iniciar sesión.', verificacion_requerida: true, email: usuario.email });
 
-    const token = generarToken(usuario._id);
+    const token = generarToken(usuario._id, usuario.tokenVersion || 0);
     setSessionCookie(res, token);
     void Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
 
@@ -104,7 +104,7 @@ const login = async (req, res) => {
       text: 'Se ha detectado un inicio de sesión en tu cuenta.'
     });
 
-    return res.status(200).json({ mensaje: 'Inicio de sesión exitoso', token, usuario: datosPublicos(usuario) });
+    return res.status(200).json({ mensaje: 'Inicio de sesión exitoso', usuario: datosPublicos(usuario) });
   } catch {
     return res.status(500).json({ mensaje: 'No se pudo iniciar sesión' });
   }
@@ -113,15 +113,15 @@ const login = async (req, res) => {
 const verificarEmail = async (req, res) => {
   const email = normalizarEmail(req.body.email);
   const codigo = String(req.body.codigo || '').trim();
-  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira');
+  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira +tokenVersion');
   if (!usuario || !/^\d{6}$/.test(codigo) || !verificarCodigo(usuario, codigo)) return res.status(400).json({ mensaje: 'El código no es válido o ya expiró.' });
   usuario.email_verificado = true;
   usuario.email_verificacion_token = undefined;
   usuario.email_verificacion_expira = undefined;
   await usuario.save();
-  const token = generarToken(usuario._id);
+  const token = generarToken(usuario._id, usuario.tokenVersion || 0);
   setSessionCookie(res, token);
-  return res.status(200).json({ mensaje: 'Correo verificado correctamente.', token, usuario: datosPublicos(usuario) });
+  return res.status(200).json({ mensaje: 'Correo verificado correctamente.', usuario: datosPublicos(usuario) });
 };
 
 const logout = (req, res) => {

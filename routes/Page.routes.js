@@ -1,22 +1,30 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
-const { extname } = path;
 const pageController = require('../controllers/Page.controller');
 const rateLimitLogin = require('../middleware/rateLimit');
-const { exigirRol, exigirSesion } = require('../middleware/webAuth');
+const { limitarVerificacion, limitarReenvio, limitarRecuperacion } = rateLimitLogin;
+const { exigirRol, exigirSesion, protegerCSRF } = require('../middleware/webAuth');
 const asyncHandler = require('../middleware/asyncHandler');
 
 const router = express.Router();
+router.use(protegerCSRF);
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const imageExtensions = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`)
+    filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${imageExtensions[file.mimetype]}`)
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  fileFilter: (req, file, cb) => cb(null, Boolean(imageExtensions[file.mimetype])),
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+});
+const uploadImage = (req, res, next) => upload.single('foto')(req, res, (error) => {
+  if (error) return res.status(400).send('La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
+  next();
 });
 
 router.get('/', (req, res) => res.render('publicos/index', { layout: false, active: 'inicio' }));
@@ -25,14 +33,14 @@ router.post('/login', rateLimitLogin, asyncHandler(pageController.login));
 router.get('/registro', (req, res) => res.render('publicos/registro', { layout: false, proximo: req.query.next || '' }));
 router.post('/registro', asyncHandler(pageController.registro));
 router.get('/verificar-email', (req, res) => res.render('publicos/verificar_email', { layout: false, email: req.query.email || '', next: req.query.next || '', error: '', enviado: false }));
-router.post('/verificar-email', asyncHandler(pageController.verificarEmailWeb));
-router.post('/verificar-email/reenviar', asyncHandler(pageController.reenviarVerificacionWeb));
-router.get('/logout', pageController.logout);
+router.post('/verificar-email', limitarVerificacion, asyncHandler(pageController.verificarEmailWeb));
+router.post('/verificar-email/reenviar', limitarReenvio, asyncHandler(pageController.reenviarVerificacionWeb));
+router.post('/logout', pageController.logout);
 router.get('/dashboard', exigirSesion, pageController.dashboard);
 router.get('/ayuda', (req, res) => res.render('publicos/ayuda', { layout: false }));
 router.post('/ayuda', asyncHandler(pageController.ayuda));
 router.get('/recuperar-password', (req, res) => res.render('publicos/recuperar_password', { layout: 'layouts/base', title: 'Recuperar contraseña', enviado: false }));
-router.post('/recuperar-password', asyncHandler(pageController.solicitarRecuperacion));
+router.post('/recuperar-password', limitarRecuperacion, asyncHandler(pageController.solicitarRecuperacion));
 router.get('/restablecer-password/:token', asyncHandler(pageController.renderReset));
 router.post('/restablecer-password/:token', asyncHandler(pageController.restablecerPassword));
 router.get('/como-funciona', (req, res) => res.render('publicos/como_funciona', { layout: 'layouts/base', title: '¿Cómo funciona?' }));
@@ -45,7 +53,7 @@ router.get('/reservar-cita', exigirSesion, asyncHandler(pageController.reservarC
 router.post('/pre-confirmar', exigirSesion, asyncHandler(pageController.preConfirmar));
 router.post('/confirmar-reserva', exigirSesion, asyncHandler(pageController.confirmarReserva));
 router.get('/perfil', exigirSesion, asyncHandler(pageController.perfil));
-router.post('/perfil', exigirSesion, upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
+router.post('/perfil', exigirSesion, uploadImage, asyncHandler(pageController.actualizarPerfil));
 router.get('/notificaciones', exigirSesion, (req, res) => res.render('usuarios/usuario_notificaciones', { layout: false, notificaciones: [] }));
 router.post('/notificaciones/leidas', exigirSesion, (req, res) => res.redirect('/notificaciones'));
 router.get('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
@@ -66,7 +74,7 @@ router.get('/pedido-exitoso/:id', exigirSesion, asyncHandler(pageController.pedi
 
 router.get('/barbero', exigirRol('Barbero'), asyncHandler(pageController.barberoDashboard));
 router.get('/barbero/perfil', exigirRol('Barbero'), asyncHandler(pageController.barberoPerfil));
-router.post('/barbero/perfil', exigirRol('Barbero'), upload.single('foto'), asyncHandler(pageController.actualizarPerfil));
+router.post('/barbero/perfil', exigirRol('Barbero'), uploadImage, asyncHandler(pageController.actualizarPerfil));
 router.get('/barbero/notificaciones', exigirRol('Barbero'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
 router.get('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoNuevaCita));
 router.post('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoGuardarCita));
@@ -78,15 +86,15 @@ router.get('/admin', exigirRol('Admin'), asyncHandler(pageController.adminDashbo
 router.get('/admin/perfil', exigirRol('Admin'), (req, res) => res.redirect('/perfil'));
 router.get('/admin/usuarios', exigirRol('Admin'), asyncHandler(pageController.adminUsuarios));
 router.get('/admin/usuarios/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminFormularioUsuario));
-router.post('/admin/usuarios/nuevo', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarUsuario));
+router.post('/admin/usuarios/nuevo', exigirRol('Admin'), uploadImage, asyncHandler(pageController.adminGuardarUsuario));
 router.get('/admin/usuarios/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioUsuario));
-router.post('/admin/usuarios/:id/editar', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarUsuario));
+router.post('/admin/usuarios/:id/editar', exigirRol('Admin'), uploadImage, asyncHandler(pageController.adminGuardarUsuario));
 router.post('/admin/usuarios/:id/suspender', exigirRol('Admin'), asyncHandler(pageController.adminSuspenderUsuario));
 router.get('/admin/peluqueros', exigirRol('Admin'), asyncHandler(pageController.adminPeluqueros));
 router.get('/admin/peluqueros/nuevo', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluquero));
-router.post('/admin/peluqueros/nuevo', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarPeluquero));
+router.post('/admin/peluqueros/nuevo', exigirRol('Admin'), uploadImage, asyncHandler(pageController.adminGuardarPeluquero));
 router.get('/admin/peluqueros/:id/editar', exigirRol('Admin'), asyncHandler(pageController.adminFormularioPeluquero));
-router.post('/admin/peluqueros/:id/editar', exigirRol('Admin'), upload.single('foto'), asyncHandler(pageController.adminGuardarPeluquero));
+router.post('/admin/peluqueros/:id/editar', exigirRol('Admin'), uploadImage, asyncHandler(pageController.adminGuardarPeluquero));
 router.post('/admin/peluqueros/:id/suspender', exigirRol('Admin'), asyncHandler(pageController.adminSuspenderUsuario));
 router.get('/admin/reservas', exigirRol('Admin'), asyncHandler(pageController.adminReservas));
 router.get('/admin/reservas/nueva', exigirRol('Admin'), asyncHandler(pageController.adminFormularioReserva));

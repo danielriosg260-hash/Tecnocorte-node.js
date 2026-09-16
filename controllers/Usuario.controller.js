@@ -1,4 +1,6 @@
 const Usuario = require('../models/Usuario.model');
+const Reserva = require('../models/Reserva.model');
+const Pedido = require('../models/Pedido.model');
 
 const camposPublicos = (usuario) => ({
   id: usuario._id,
@@ -35,7 +37,7 @@ const listarUno = async (req, res) => {
 
 const actualizar = async (req, res) => {
   try {
-    const usuario = await Usuario.findById(req.params.id).select('+password');
+    const usuario = await Usuario.findById(req.params.id).select('+password +tokenVersion');
     if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
     const campos = ['nombre', 'apellido', 'email', 'telefono', 'rol', 'activo', 'peluqueria_id'];
     campos.forEach((campo) => {
@@ -53,6 +55,12 @@ const actualizar = async (req, res) => {
 };
 
 const eliminar = async (req, res) => {
+  if (String(req.params.id) === String(req.usuario._id)) return res.status(400).json({ mensaje: 'No puedes eliminar tu propio usuario' });
+  const [reservas, pedidos] = await Promise.all([
+    Reserva.countDocuments({ $or: [{ cliente: req.params.id }, { peluquero: req.params.id }] }),
+    Pedido.countDocuments({ cliente: req.params.id })
+  ]);
+  if (reservas || pedidos) return res.status(409).json({ mensaje: 'No se puede eliminar un usuario con reservas o pedidos relacionados' });
   const usuario = await Usuario.findByIdAndDelete(req.params.id);
   if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
   res.status(200).json({ mensaje: 'Usuario eliminado correctamente' });

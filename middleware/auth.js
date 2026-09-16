@@ -11,8 +11,8 @@ const verificarToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const usuario = await Usuario.findById(decoded.id).select('-password');
-    if (!usuario || usuario.activo === false) {
+    const usuario = await Usuario.findById(decoded.id).select('-password +tokenVersion');
+    if (!usuario || usuario.activo === false || (decoded.tokenVersion ?? 0) !== (usuario.tokenVersion || 0)) {
       return res.status(401).json({ mensaje: 'Usuario no encontrado' });
     }
     req.usuario = usuario;

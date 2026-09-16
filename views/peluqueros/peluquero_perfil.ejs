@@ -5,9 +5,9 @@
     <a class="inline-flex md:hidden" href="/barbero" aria-label="TecnoCorte"><%- include('../partials/logo') %></a>
     <div class="hidden md:block"></div>
     <div class="flex items-center gap-6">
-      <a href="/logout" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Cerrar sesión">
+      <form method="post" action="/logout"><button type="submit" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Cerrar sesión">
         <span class="material-symbols-outlined">logout</span>
-      </a>
+      </button></form>
     </div>
   </header>
 

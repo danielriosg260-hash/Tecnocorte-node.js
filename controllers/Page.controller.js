@@ -38,8 +38,18 @@ const plain = (doc) => {
   if (value.peluqueria_id) value.peluqueria_id = String(value.peluqueria_id);
   return value;
 };
+const fechaClave = (valor) => {
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+};
+const inicioDelDia = () => {
+  const fecha = new Date();
+  fecha.setHours(0, 0, 0, 0);
+  return fecha;
+};
 const usuarioView = (doc) => plain(doc);
-const errorMessage = (error, fallback) => error?.code === 11000 ? 'El correo ya está registrado.' : fallback;
+const errorMessage = (error) => error?.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo guardar la información.';
 
 const renderLogin = (req, res, error = '') => res.render('publicos/login', {
   layout: false,
@@ -52,12 +62,12 @@ const login = async (req, res) => {
     const email = normalizarEmail(req.body.user || req.body.email);
     const password = req.body.password;
     if (!email || typeof password !== 'string' || !password) return renderLogin(req, res, 'Ingresa correo y contraseña.');
-    const usuario = await Usuario.findOne({ email }).select('+password');
+    const usuario = await Usuario.findOne({ email }).select('+password +tokenVersion');
     if (!usuario || usuario.activo === false || !(await usuario.compararPassword(password))) {
       return renderLogin(req, res, 'Correo o contraseña incorrectos.');
     }
     if (usuario.email_verificado === false) return renderLogin(req, res, 'Verifica tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.');
-    setSessionCookie(res, generarToken(usuario._id));
+    setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion || 0));
     void Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
     const requested = req.body.next || req.query.next;
     return res.redirect(requested ? nextUrl(requested) : dashboardUrl(usuario));
@@ -91,13 +101,13 @@ const verificarEmailWeb = async (req, res) => {
   const email = normalizarEmail(req.body.email || req.query.email);
   const codigo = String(req.body.codigo || '').trim();
   const next = nextUrl(req.body.next || req.query.next || '');
-  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira');
+  const usuario = await Usuario.findOne({ email }).select('+email_verificacion_token +email_verificacion_expira +tokenVersion');
   if (!usuario || !/^\d{6}$/.test(codigo) || !verificarCodigo(usuario, codigo)) return res.status(400).render('publicos/verificar_email', { layout: false, email, next, error: 'El código no es válido o ya expiró.', enviado: false });
   usuario.email_verificado = true;
   usuario.email_verificacion_token = undefined;
   usuario.email_verificacion_expira = undefined;
   await usuario.save();
-  setSessionCookie(res, generarToken(usuario._id));
+  setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion || 0));
   return res.redirect(next !== '/' ? next : dashboardUrl(usuario));
 };
 
@@ -147,7 +157,7 @@ const renderReset = async (req, res, error = '') => {
 
 const restablecerPassword = async (req, res) => {
   const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
-  const usuario = await Usuario.findOne({ resetPasswordToken: tokenHash, resetPasswordExpires: { $gt: new Date() } }).select('+resetPasswordToken +resetPasswordExpires');
+  const usuario = await Usuario.findOne({ resetPasswordToken: tokenHash, resetPasswordExpires: { $gt: new Date() } }).select('+resetPasswordToken +resetPasswordExpires +tokenVersion');
   if (!usuario) return renderReset(req, res, 'El enlace no es válido o ya expiró.');
   if (req.body.password !== req.body.password_confirm || typeof req.body.password !== 'string' || req.body.password.length < 8) {
     return res.status(400).render('publicos/restablecer_password', { layout: 'layouts/base', title: 'Restablecer contraseña', token: req.params.token, valido: true, error: 'Las contraseñas deben coincidir y tener al menos 8 caracteres.' });
@@ -191,13 +201,13 @@ const horariosBase = () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((day) =>
 const reservarCita = async (req, res) => {
   const peluqueriasData = (await Peluqueria.find()).map(plain);
   const barberos = (await Usuario.find({ rol: 'Barbero', activo: { $ne: false } })).map((barbero) => ({ ...plain(barbero), peluqueria_id: barbero.peluqueria_id ? String(barbero.peluqueria_id) : '' }));
-  const reservas = (await Reserva.find({ fecha: { $gte: new Date() } }).select('peluquero fecha hora minutos')).map((reserva) => ({ barbero: String(reserva.peluquero), fecha: new Date(reserva.fecha).toISOString().slice(0, 10), hora: reserva.hora, minutos: reserva.minutos || 30 }));
+  const reservas = (await Reserva.find({ fecha: { $gte: inicioDelDia() } }).select('peluquero fecha hora minutos')).map((reserva) => ({ barbero: String(reserva.peluquero), fecha: fechaClave(reserva.fecha), hora: reserva.hora, minutos: reserva.minutos || 30 }));
   const horarios = Object.fromEntries(peluqueriasData.map((peluqueria) => [peluqueria.id, horariosBase()]));
   const horariosGuardados = await Horario.find({ peluqueria: { $in: peluqueriasData.map((peluqueria) => peluqueria.id) } });
   horariosGuardados.forEach((horario) => {
     if (horarios[String(horario.peluqueria)]) horarios[String(horario.peluqueria)][horario.dia_semana] = { activo: horario.activo, inicio: horario.hora_inicio, fin: horario.hora_fin };
   });
-  const bloqueos = (await Bloqueo.find({ peluqueria: { $in: peluqueriasData.map((peluqueria) => peluqueria.id) }, fecha: { $gte: new Date() } })).map((bloqueo) => ({ fecha: new Date(bloqueo.fecha).toISOString().slice(0, 10), hora: bloqueo.hora || null }));
+  const bloqueos = (await Bloqueo.find({ peluqueria: { $in: peluqueriasData.map((peluqueria) => peluqueria.id) }, fecha: { $gte: inicioDelDia() } })).map((bloqueo) => ({ fecha: fechaClave(bloqueo.fecha), hora: bloqueo.hora || null }));
   const now = new Date();
   return res.render('usuarios/usuario_reservar_cita', {
     layout: false,
@@ -207,7 +217,7 @@ const reservarCita = async (req, res) => {
     horarios_json: JSON.stringify(horarios),
     bloqueos_json: JSON.stringify(bloqueos),
     reservas_json: JSON.stringify(reservas),
-    fecha_hoy: now.toISOString().slice(0, 10),
+    fecha_hoy: fechaClave(now),
     hora_actual: now.toTimeString().slice(0, 5),
     servicio_inicial: req.query.servicio || '',
     peluqueria_inicial: req.query.peluqueria || '',
@@ -218,13 +228,14 @@ const reservarCita = async (req, res) => {
 
 const findServicio = (nombre) => SERVICIOS.find((servicio) => servicio.nombre === nombre);
 const minutosHora = (value) => {
-  const [hours, minutes] = String(value || '').split(':').map(Number);
-  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : -1;
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''))) return -1;
+  const [hours, minutes] = String(value).split(':').map(Number);
+  return hours * 60 + minutes;
 };
 const fechaLocal = (fecha, hora = '00:00') => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || !/^\d{2}:\d{2}$/.test(String(hora))) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || minutosHora(hora) < 0) return null;
   const value = new Date(`${fecha}T${hora}:00`);
-  return Number.isNaN(value.getTime()) ? null : value;
+  return Number.isNaN(value.getTime()) || fechaClave(value) !== fecha ? null : value;
 };
 const dosHorasAntes = (fecha, hora) => {
   const inicio = fechaLocal(fecha, hora);
@@ -367,7 +378,7 @@ const actualizarReserva = async (req, res) => {
   const servicio = findServicio(req.body.servicio);
   const current = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id });
   if (!current) return res.redirect('/perfil');
-  if (!servicio || !dosHorasAntes(current.fecha.toISOString().slice(0, 10), current.hora)) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
+  if (!servicio || !dosHorasAntes(fechaClave(current.fecha), current.hora)) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
   const error = await validarCita({ peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: req.body.fecha, hora: req.body.hora, minutos: servicio.minutos, excluir: current._id });
   if (error) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent(error)}`);
   try {
@@ -382,7 +393,7 @@ const actualizarReserva = async (req, res) => {
 
 const cancelarReserva = async (req, res) => {
   const reserva = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id, estado: { $nin: ['Completada', 'Cancelada'] } });
-  if (reserva && dosHorasAntes(reserva.fecha.toISOString().slice(0, 10), reserva.hora)) {
+  if (reserva && dosHorasAntes(fechaClave(reserva.fecha), reserva.hora)) {
     await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
     void notificarReserva(reserva._id, 'cancelada');
   }
@@ -402,7 +413,7 @@ const cambiarPassword = async (req, res) => {
   const view = { layout: 'layouts/dashboard', title: 'Cambiar contraseña', usuario: usuarioView(req.usuario) };
   if (req.method === 'GET') return res.render('usuarios/cambiar_password', view);
   const { password_actual, password, password_confirm } = req.body;
-  const usuario = await Usuario.findById(req.usuario._id).select('+password');
+  const usuario = await Usuario.findById(req.usuario._id).select('+password +tokenVersion');
   if (!usuario || !(await usuario.compararPassword(password_actual)) || password !== password_confirm || typeof password !== 'string' || password.length < 8) return res.status(400).render('usuarios/cambiar_password', { ...view, error: 'Revisa la contraseña actual y confirma una contraseña nueva de al menos 8 caracteres.' });
   usuario.password = password;
   await usuario.save();
@@ -518,7 +529,7 @@ const adminGuardarUsuario = async (req, res) => {
   try {
     const values = req.body;
     const fields = { nombre: values.nombre, apellido: values.apellido, email: normalizarEmail(values.email), telefono: values.telefono, rol: values.rol, peluqueria_id: values.peluqueria || undefined };
-    let usuario = req.params.id ? await Usuario.findById(req.params.id).select('+password') : new Usuario(fields);
+    let usuario = req.params.id ? await Usuario.findById(req.params.id).select('+password +tokenVersion') : new Usuario(fields);
     if (!usuario) return res.redirect('/admin/usuarios');
     Object.assign(usuario, fields);
     if (values.password) usuario.password = values.password;
@@ -538,7 +549,7 @@ const adminSuspenderUsuario = async (req, res) => {
   usuario.activo = !suspender;
   await usuario.save();
   if (suspender && usuario.rol === 'Barbero') {
-    const futuras = await Reserva.find({ peluquero: usuario._id, fecha: { $gte: new Date() }, estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] } }).select('_id');
+    const futuras = await Reserva.find({ peluquero: usuario._id, fecha: { $gte: inicioDelDia() }, estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] } }).select('_id');
     await Reserva.updateMany({ _id: { $in: futuras.map((item) => item._id) } }, { $set: { requiere_reprogramacion: true, motivo_reprogramacion: 'El barbero fue suspendido. Selecciona otro barbero.' } });
     futuras.forEach((reserva) => void notificarSuspension(reserva._id));
   }
@@ -556,7 +567,7 @@ const adminGuardarPeluquero = async (req, res) => {
   const values = req.body;
   const fields = { nombre: values.nombre, apellido: values.apellido, email: normalizarEmail(values.email), telefono: values.telefono, rol: 'Barbero', peluqueria_id: values.peluqueria || undefined };
   try {
-    let usuario = req.params.id ? await Usuario.findById(req.params.id).select('+password') : new Usuario(fields);
+    let usuario = req.params.id ? await Usuario.findById(req.params.id).select('+password +tokenVersion') : new Usuario(fields);
     if (!usuario) return res.redirect('/admin/peluqueros');
     Object.assign(usuario, fields);
     if (values.password) usuario.password = values.password;
@@ -669,20 +680,34 @@ const adminHorarios = async (req, res) => {
     return { dia_semana: day, dia_semana_display: DIAS[day], activo: value?.activo ?? day < 6, hora_inicio: value?.hora_inicio || '09:00', hora_fin: value?.hora_fin || '18:00' };
   });
   const bloqueos = actual ? (await Bloqueo.find({ peluqueria: actual.id }).sort({ fecha: 1 })).map(plain) : [];
-  return res.render('administrador/admin_horarios', { layout: 'layouts/dashboard', peluquerias: peluqueriasData, peluqueria_actual: actual, horarios: horariosView, bloqueos });
+  return res.render('administrador/admin_horarios', { layout: 'layouts/dashboard', peluquerias: peluqueriasData, peluqueria_actual: actual, horarios: horariosView, bloqueos, error: req.query.error || '' });
 };
 
 const adminGuardarHorarios = async (req, res) => {
   const peluqueria = req.body.peluqueria_seleccionada;
   if (esId(peluqueria)) {
-    await Promise.all([0, 1, 2, 3, 4, 5, 6].map((day) => Horario.findOneAndUpdate({ peluqueria, dia_semana: day }, { peluqueria, dia_semana: day, activo: Boolean(req.body[`activo_${day}`]), hora_inicio: req.body[`inicio_${day}`] || '09:00', hora_fin: req.body[`fin_${day}`] || '18:00' }, { upsert: true, runValidators: true })));
+    const datos = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      dia_semana: day,
+      activo: Boolean(req.body[`activo_${day}`]),
+      hora_inicio: req.body[`inicio_${day}`] || '09:00',
+      hora_fin: req.body[`fin_${day}`] || '18:00'
+    }));
+    if (datos.some((item) => minutosHora(item.hora_inicio) < 0 || minutosHora(item.hora_fin) < 0 || minutosHora(item.hora_inicio) >= minutosHora(item.hora_fin))) {
+      return res.redirect(`/admin/horarios?peluqueria=${peluqueria}&error=${encodeURIComponent('Revisa que las horas tengan formato válido y que el inicio sea anterior al cierre.')}`);
+    }
+    await Promise.all(datos.map((item) => Horario.findOneAndUpdate({ peluqueria, dia_semana: item.dia_semana }, { peluqueria, ...item }, { upsert: true, runValidators: true })));
   }
   return res.redirect(`/admin/horarios?peluqueria=${peluqueria}`);
 };
 
 const adminCrearBloqueo = async (req, res) => {
-  if (esId(req.body.peluqueria_seleccionada) && req.body.fecha) await Bloqueo.create({ peluqueria: req.body.peluqueria_seleccionada, fecha: req.body.fecha, hora: req.body.hora || null, motivo: req.body.motivo });
-  return res.redirect(`/admin/horarios?peluqueria=${req.body.peluqueria_seleccionada}`);
+  const peluqueria = req.body.peluqueria_seleccionada;
+  const hora = req.body.hora || null;
+  if (!esId(peluqueria) || !fechaLocal(req.body.fecha) || (hora && minutosHora(hora) < 0)) {
+    return res.redirect(`/admin/horarios?peluqueria=${peluqueria}&error=${encodeURIComponent('El bloqueo necesita una fecha y hora válidas.')}`);
+  }
+  await Bloqueo.create({ peluqueria, fecha: new Date(`${req.body.fecha}T00:00:00`), hora, motivo: String(req.body.motivo || '').slice(0, 200) });
+  return res.redirect(`/admin/horarios?peluqueria=${peluqueria}`);
 };
 
 const adminEliminarBloqueo = async (req, res) => {
@@ -700,7 +725,7 @@ const adminIngresos = async (req, res) => {
 
 const barberoDashboard = async (req, res) => {
   const citas = (await Reserva.find({ peluquero: req.usuario._id }).populate('cliente peluqueria').sort({ fecha: 1 })).map((reserva) => ({ ...plain(reserva), cliente: plain(reserva.cliente), peluqueria: plain(reserva.peluqueria) }));
-  const citasHoy = citas.filter((cita) => new Date(cita.fecha).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10));
+  const citasHoy = citas.filter((cita) => fechaClave(cita.fecha) === fechaClave(new Date()));
   const completadas = citas.filter((cita) => cita.estado === 'Completada');
   return res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', citas, citas_hoy: citasHoy, citas_pendientes: citas.filter((cita) => cita.estado === 'Pendiente'), citas_completadas: completadas, citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'), total_citas: citas.length, ingresos_hoy: 0, ingresos_total: completadas.length, calificaciones: [], promedio: 0, total_calificaciones: 0 });
 };
@@ -717,7 +742,7 @@ const barberoActualizarReserva = async (req, res) => {
   const current = await Reserva.findOne({ _id: req.params.id, peluquero: req.usuario._id });
   const servicio = findServicio(req.body.servicio);
   if (!current || !servicio) return res.redirect('/barbero');
-  if (!dosHorasAntes(current.fecha.toISOString().slice(0, 10), current.hora)) return res.redirect(`/barbero/citas/${req.params.id}/editar?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
+  if (!dosHorasAntes(fechaClave(current.fecha), current.hora)) return res.redirect(`/barbero/citas/${req.params.id}/editar?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
   const error = await validarCita({ peluqueria: req.body.peluqueria, peluquero: req.usuario._id, fecha: req.body.fecha, hora: req.body.hora, minutos: servicio.minutos, excluir: current._id });
   if (error) return res.redirect(`/barbero/citas/${req.params.id}/editar?error=${encodeURIComponent(error)}`);
   try {
@@ -749,7 +774,7 @@ const barberoEstadoCita = async (req, res) => {
   const reserva = await Reserva.findOne({ _id: req.params.id, peluquero: req.usuario._id });
   if (!reserva) return res.redirect('/barbero');
   if (req.body.estado === 'Cancelada') {
-    if (dosHorasAntes(reserva.fecha.toISOString().slice(0, 10), reserva.hora)) {
+    if (dosHorasAntes(fechaClave(reserva.fecha), reserva.hora)) {
       await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
       void notificarReserva(reserva._id, 'cancelada');
     }

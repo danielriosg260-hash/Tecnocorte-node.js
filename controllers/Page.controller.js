@@ -449,6 +449,7 @@ const eliminarObra = async (req, res) => {
 };
 
 const editarReserva = async (req, res) => {
+  if (!esId(req.params.id)) return res.redirect('/perfil');
   const reserva = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id }).populate('peluquero peluqueria');
   if (!reserva) return res.redirect('/perfil');
   return res.render('usuarios/usuario_editar_reserva', { layout: 'layouts/dashboard', title: 'Modificar cita', error: req.query.error || '', reserva: { ...plain(reserva), peluquero: plain(reserva.peluquero) || { activo: false }, peluqueria_id: String(reserva.peluqueria?._id || ''), peluquero_id: String(reserva.peluquero?._id || '') }, servicios: SERVICIOS, peluquerias: (await Peluqueria.find()).map(plain), peluqueros: (await Usuario.find({ rol: 'Barbero' })).map(plain) });
@@ -456,6 +457,7 @@ const editarReserva = async (req, res) => {
 
 const actualizarReserva = async (req, res) => {
   try {
+    if (!esId(req.params.id)) return res.redirect('/perfil');
     const servicio = findServicio(req.body.servicio);
     const current = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id });
     if (!current) return res.redirect('/perfil');
@@ -821,12 +823,14 @@ const barberoDashboard = async (req, res) => {
 const barberoNuevaCita = async (req, res) => res.render('peluqueros/peluquero_crear_cita', { layout: 'layouts/dashboard', error: req.query.error || '', clientes: (await Usuario.find({ rol: 'Cliente', activo: { $ne: false } })).map(plain), peluquerias: (await Peluqueria.find()).map(plain), servicios: SERVICIOS, reserva_estados: ESTADOS_RESERVA.map(([value, label]) => ({ value, label })) });
 
 const barberoEditarReserva = async (req, res) => {
+  if (!esId(req.params.id)) return res.redirect('/barbero');
   const reserva = await Reserva.findOne({ _id: req.params.id, peluquero: req.usuario._id }).populate('peluquero peluqueria');
   if (!reserva) return res.redirect('/barbero');
   return res.render('usuarios/usuario_editar_reserva', { layout: 'layouts/dashboard', title: 'Modificar cita', error: req.query.error || '', backUrl: '/barbero', formAction: `/barbero/citas/${reserva._id}`, reserva: { ...plain(reserva), peluquero: plain(reserva.peluquero) || { activo: true }, peluqueria_id: String(reserva.peluqueria?._id || ''), peluquero_id: String(reserva.peluquero?._id || '') }, servicios: SERVICIOS, peluquerias: (await Peluqueria.find()).map(plain), peluqueros: [plain(req.usuario)] });
 };
 
 const barberoActualizarReserva = async (req, res) => {
+  if (!esId(req.params.id)) return res.redirect('/barbero');
   const current = await Reserva.findOne({ _id: req.params.id, peluquero: req.usuario._id });
   const servicio = findServicio(req.body.servicio);
   if (!current || !servicio) return res.redirect('/barbero');
@@ -887,6 +891,6 @@ module.exports = {
   adminCrearBloqueo, adminIngresos, adminMensajes, ayuda, actualizarCarrito, actualizarPerfil, actualizarReserva, barberoDashboard, barberoEstadoCita,
   barberoActualizarReserva, barberoEditarReserva, barberoGuardarCita, barberoNuevaCita, barberoPerfil, cambiarPassword, cancelarReserva, calificar, confirmarCita, confirmarReserva,
   subirObras, eliminarObra,
-  dashboard, editarReserva, eliminarCarrito, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
+  dashboard, editarReserva, eliminarCarrito, listarNotificaciones, listarNotificacionesBarbero, marcarNotificacionesLeidas, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
   reservarCita, restablecerPassword, renderLogin, renderReset, solicitarRecuperacion, servicios, tienda, verificarEmailWeb, verCarrito
 };

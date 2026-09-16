@@ -126,6 +126,7 @@ const verificarEmailWeb = async (req, res) => {
   usuario.email_verificacion_token = undefined;
   usuario.email_verificacion_expira = undefined;
   await usuario.save();
+  void Notificacion.create({ usuario: usuario._id, tipo: 'sistema', titulo: 'Cuenta activada', mensaje: 'Tu cuenta de TecnoCorte fue verificada correctamente.' }).catch((error) => console.error('Error al crear notificación:', error.message));
   setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion || 0));
   return res.redirect(next !== '/' ? next : dashboardUrl(usuario));
 };
@@ -348,10 +349,33 @@ const notificarSuspension = async (reservaId) => {
   }).catch(() => {});
 };
 
+const notificarCuentaCreada = async (usuario) => {
+  await Notificacion.create({ usuario: usuario._id, tipo: 'sistema', titulo: 'Cuenta creada', mensaje: 'Tu cuenta de TecnoCorte está lista. Inicia sesión para continuar.' }).catch((error) => console.error('Error al crear notificación de cuenta:', error.message));
+  if (!usuario.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  const base = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
+  let url = '';
+  try {
+    const parsed = new URL(base);
+    if (['http:', 'https:'].includes(parsed.protocol)) url = `${base}/login`;
+  } catch {
+    // El correo se envía sin botón si APP_URL todavía no está configurada.
+  }
+  await enviarCorreoBonito(transporter, {
+    to: usuario.email,
+    subject: 'Tu cuenta de TecnoCorte está lista',
+    title: 'Bienvenido a TecnoCorte',
+    preheader: 'Tu cuenta fue creada por el equipo de TecnoCorte.',
+    greeting: `Hola ${usuario.nombre},`,
+    content: '<p>Tu cuenta fue creada correctamente. Usa el correo registrado y la contraseña entregada por el administrador para ingresar.</p>',
+    ...(url ? { action: { label: 'Iniciar sesión', url } } : {}),
+    text: 'Tu cuenta fue creada correctamente. Inicia sesión en TecnoCorte.'
+  }).catch((error) => console.error('Error al enviar bienvenida:', error.message));
+};
+
 const preConfirmar = async (req, res) => {
   const servicio = findServicio(req.body.servicio);
   if (!servicio || !esId(req.body.peluqueria) || !esId(req.body.peluquero) || !req.body.fecha || !req.body.hora) return res.redirect('/reservar-cita');
-  const [peluqueria, peluquero] = await Promise.all([Peluqueria.findById(req.body.peluqueria), Usuario.findOne({ _id: req.body.peluquero, rol: 'Barbero', activo: { $ne: false } })]);
+  const [peluqueria, peluquero] = await Promise.all([Peluqueria.findById(req.body.peluqueria), Usuario.findOne({ _id: req.body.peluquero, rol: 'Barbero', activo: { $ne: false }, peluqueria_id: req.body.peluqueria })]);
   if (!peluqueria || !peluquero) return res.redirect('/reservar-cita');
   const datos = { servicio: servicio.nombre, precio: servicio.precio, duracion: servicio.minutos, fecha: req.body.fecha, hora: req.body.hora, peluqueria: plain(peluqueria), peluquero: plain(peluquero) };
   return res.render('usuarios/usuario_confirmar_reserva', { layout: false, datos });
@@ -452,7 +476,7 @@ const editarReserva = async (req, res) => {
   if (!esId(req.params.id)) return res.redirect('/perfil');
   const reserva = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id }).populate('peluquero peluqueria');
   if (!reserva) return res.redirect('/perfil');
-  return res.render('usuarios/usuario_editar_reserva', { layout: 'layouts/dashboard', title: 'Modificar cita', error: req.query.error || '', reserva: { ...plain(reserva), peluquero: plain(reserva.peluquero) || { activo: false }, peluqueria_id: String(reserva.peluqueria?._id || ''), peluquero_id: String(reserva.peluquero?._id || '') }, servicios: SERVICIOS, peluquerias: (await Peluqueria.find()).map(plain), peluqueros: (await Usuario.find({ rol: 'Barbero' })).map(plain) });
+  return res.render('usuarios/usuario_editar_reserva', { layout: 'layouts/dashboard', title: 'Modificar cita', error: req.query.error || '', reserva: { ...plain(reserva), peluquero: plain(reserva.peluquero) || { activo: false }, peluqueria_id: String(reserva.peluqueria?._id || ''), peluquero_id: String(reserva.peluquero?._id || '') }, servicios: SERVICIOS, peluquerias: (await Peluqueria.find()).map(plain), peluqueros: (await Usuario.find({ rol: 'Barbero', activo: { $ne: false } })).map(plain) });
 };
 
 const actualizarReserva = async (req, res) => {
@@ -617,7 +641,9 @@ const adminGuardarUsuario = async (req, res) => {
     Object.assign(usuario, fields);
     if (values.password) usuario.password = values.password;
     if (!req.params.id && (!values.password || values.password.length < 8)) throw new Error('La contraseña debe tener al menos 8 caracteres.');
+    const eraNuevo = !req.params.id;
     await usuario.save();
+    if (eraNuevo) void notificarCuentaCreada(usuario);
     return res.redirect('/admin/usuarios');
   } catch (error) {
     return res.status(400).render('administrador/admin_formulario_usuario', { layout: 'layouts/dashboard', usuario: req.params.id ? { ...req.body, id: req.params.id } : req.body, editar: Boolean(req.params.id), roles: ROLES, peluquerias: (await Peluqueria.find()).map(plain), error: errorMessage(error, error.message) });
@@ -655,7 +681,9 @@ const adminGuardarPeluquero = async (req, res) => {
     Object.assign(usuario, fields);
     if (values.password) usuario.password = values.password;
     if (!req.params.id && (!values.password || values.password.length < 8)) throw new Error('La contraseña debe tener al menos 8 caracteres.');
+    const eraNuevo = !req.params.id;
     await usuario.save();
+    if (eraNuevo) void notificarCuentaCreada(usuario);
     return res.redirect('/admin/peluqueros');
   } catch (error) {
     return res.status(400).render('administrador/admin_formulario_peluquero', { layout: 'layouts/dashboard', datos: { ...values, id: req.params.id }, peluquerias: (await Peluqueria.find()).map(plain), error: errorMessage(error, error.message) });

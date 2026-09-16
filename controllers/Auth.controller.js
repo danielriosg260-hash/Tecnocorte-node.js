@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario.model');
+const Notificacion = require('../models/Notificacion.model');
 const Ingreso = require('../models/Ingreso.model');
 const transporter = require('../config/email');
 const { enviarCorreoBonito } = require('../config/emailTemplate');
@@ -119,6 +120,7 @@ const verificarEmail = async (req, res) => {
   usuario.email_verificacion_token = undefined;
   usuario.email_verificacion_expira = undefined;
   await usuario.save();
+  void Notificacion.create({ usuario: usuario._id, tipo: 'sistema', titulo: 'Cuenta activada', mensaje: 'Tu cuenta de TecnoCorte fue verificada correctamente.' }).catch((error) => console.error('Error al crear notificación:', error.message));
   const token = generarToken(usuario._id, usuario.tokenVersion || 0);
   setSessionCookie(res, token);
   return res.status(200).json({ mensaje: 'Correo verificado correctamente.', usuario: datosPublicos(usuario) });

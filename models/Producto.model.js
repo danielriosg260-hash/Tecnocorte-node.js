@@ -4,12 +4,12 @@ const mongoose = require('mongoose');
 // incluyendo su información principal, disponibilidad y stock.
 // También registra automáticamente las fechas de creación y actualización.
 const productoSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  descripcion: { type: String },
-  precio: { type: Number, required: true },
-  categoria: { type: String },
+  nombre: { type: String, required: true, trim: true, maxlength: 160 },
+  descripcion: { type: String, maxlength: 2000 },
+  precio: { type: Number, required: true, min: 0 },
+  categoria: { type: String, maxlength: 80 },
   imagen: { type: String },
-  stock: { type: Number, default: 0 },
+  stock: { type: Number, default: 0, min: 0 },
   disponible: { type: Boolean, default: true }
 }, { timestamps: true });
 

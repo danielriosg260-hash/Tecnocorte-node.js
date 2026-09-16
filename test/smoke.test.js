@@ -34,3 +34,17 @@ test('el modelo de usuario no expone la contraseña por defecto', () => {
   assert.equal(Usuario.schema.path('password').options.select, false);
   assert.equal(Usuario.schema.path('activo').options.default, true);
 });
+
+test('los modelos aplican límites básicos de negocio', () => {
+  const Reserva = require('../models/Reserva.model');
+  const Producto = require('../models/Producto.model');
+  const Pedido = require('../models/Pedido.model');
+  const PedidoProducto = require('../models/PedidoProducto.model');
+
+  assert.ok(Reserva.schema.path('hora').options.match.test('23:59'));
+  assert.deepEqual(Reserva.schema.path('estado').options.enum, ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar']);
+  assert.equal(Producto.schema.path('precio').options.min, 0);
+  assert.equal(Producto.schema.path('stock').options.min, 0);
+  assert.deepEqual(Pedido.schema.path('estado').options.enum, ['Pendiente', 'Confirmado', 'Enviado', 'Entregado', 'Cancelado']);
+  assert.equal(PedidoProducto.schema.path('cantidad').options.min, 1);
+});

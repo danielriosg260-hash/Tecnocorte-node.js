@@ -9,10 +9,10 @@ const reservaSchema = new mongoose.Schema({
   peluqueria: { type: mongoose.Schema.Types.ObjectId, ref: 'Peluqueria', required: true },
   peluquero: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
   fecha: { type: Date, required: true },
-  hora: { type: String, required: true },
-  servicio: { type: String },
+  hora: { type: String, required: true, match: /^(?:[01]\d|2[0-3]):[0-5]\d$/ },
+  servicio: { type: String, required: true, trim: true, maxlength: 120 },
   minutos: { type: Number, default: 30, min: 15, max: 480 },
-  estado: { type: String, default: 'Pendiente' },
+  estado: { type: String, enum: ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar'], default: 'Pendiente' },
   requiere_reprogramacion: { type: Boolean, default: false },
   motivo_reprogramacion: { type: String, default: '' }
 }, { timestamps: true });

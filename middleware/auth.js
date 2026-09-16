@@ -12,7 +12,7 @@ const verificarToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const usuario = await Usuario.findById(decoded.id).select('-password');
-    if (!usuario) {
+    if (!usuario || usuario.activo === false) {
       return res.status(401).json({ mensaje: 'Usuario no encontrado' });
     }
     req.usuario = usuario;

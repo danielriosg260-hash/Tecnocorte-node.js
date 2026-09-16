@@ -477,24 +477,27 @@ const finalizarCompra = async (req, res) => {
   const data = await cartData(req);
   if (req.method === 'GET') return res.render('carrito/finalizar_pedido', { layout: false, items: data.items, cantidad: data.cantidad, total: data.total });
   if (!data.items.length) return res.redirect('/carrito');
-  const actualizados = [];
+  const session = await mongoose.startSession();
   try {
-    for (const item of data.items) {
-      const actualizado = await Producto.findOneAndUpdate(
-        { _id: item.producto.id, disponible: true, stock: { $gte: item.cantidad } },
-        { $inc: { stock: -item.cantidad } },
-        { new: true }
-      );
-      if (!actualizado) throw new Error('Uno de los productos ya no tiene stock suficiente.');
-      actualizados.push(item);
-    }
-    const pedido = await Pedido.create({ cliente: req.usuario._id, total: data.total });
-    await PedidoProducto.insertMany(data.items.map((item) => ({ pedido: pedido._id, producto: item.producto.id, cantidad: item.cantidad, precio: item.producto.precio })));
+    let pedido;
+    await session.withTransaction(async () => {
+      for (const item of data.items) {
+        const actualizado = await Producto.findOneAndUpdate(
+          { _id: item.producto.id, disponible: true, stock: { $gte: item.cantidad } },
+          { $inc: { stock: -item.cantidad } },
+          { new: true, session }
+        );
+        if (!actualizado) throw new Error('Uno de los productos ya no tiene stock suficiente.');
+      }
+      [pedido] = await Pedido.create([{ cliente: req.usuario._id, total: data.total }], { session });
+      await PedidoProducto.insertMany(data.items.map((item) => ({ pedido: pedido._id, producto: item.producto.id, cantidad: item.cantidad, precio: item.producto.precio })), { session });
+    });
     writeCart(res, []);
     return res.redirect(`/pedido-exitoso/${pedido._id}`);
   } catch (error) {
-    await Promise.all(actualizados.map((item) => Producto.findByIdAndUpdate(item.producto.id, { $inc: { stock: item.cantidad } })));
-    return res.status(409).render('carrito/finalizar_pedido', { layout: false, items: data.items, cantidad: data.cantidad, total: data.total, error: error.message });
+    return res.status(409).render('carrito/finalizar_pedido', { layout: false, items: data.items, cantidad: data.cantidad, total: data.total, error: 'No se pudo completar la compra. Verifica el stock e inténtalo de nuevo.' });
+  } finally {
+    await session.endSession();
   }
 };
 

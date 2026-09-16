@@ -39,6 +39,12 @@ const enviarCorreo = (opciones) => enviarCorreoBonito(transporter, opciones).cat
   console.error('Error al enviar correo:', error.message);
 });
 
+const avisarIntentoCuentaSuspendida = async (usuario) => {
+  const administradores = await Usuario.find({ rol: 'Admin', activo: { $ne: false } }).select('_id');
+  if (!administradores.length) return;
+  await Notificacion.insertMany(administradores.map((admin) => ({ usuario: admin._id, tipo: 'sistema', titulo: 'Intento de acceso de cuenta suspendida', mensaje: `${usuario.nombre} ${usuario.apellido} intentó iniciar sesión con una cuenta suspendida.` })));
+};
+
 const registro = async (req, res) => {
   try {
     const { nombre, apellido, password, telefono } = req.body;
@@ -86,8 +92,12 @@ const login = async (req, res) => {
       ? await usuario.compararPassword(password)
       : await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
 
-    if (!usuario || !valida || usuario.activo === false) {
+    if (!usuario || !valida) {
       return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
+    }
+    if (usuario.activo === false) {
+      void avisarIntentoCuentaSuspendida(usuario).catch((error) => console.error('Error al avisar suspensión:', error.message));
+      return res.status(403).json({ mensaje: 'Tu cuenta está suspendida. Contacta al administrador para solicitar acceso.' });
     }
     if (usuario.email_verificado === false) return res.status(403).json({ mensaje: 'Verifica tu correo antes de iniciar sesión.', verificacion_requerida: true, email: usuario.email });
 

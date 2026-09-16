@@ -54,6 +54,12 @@ const inicioDelDia = () => {
 const usuarioView = (doc) => plain(doc);
 const errorMessage = (error) => error?.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo guardar la información.';
 
+const avisarIntentoCuentaSuspendida = async (usuario) => {
+  const administradores = await Usuario.find({ rol: 'Admin', activo: { $ne: false } }).select('_id');
+  if (!administradores.length) return;
+  await Notificacion.insertMany(administradores.map((admin) => ({ usuario: admin._id, tipo: 'sistema', titulo: 'Intento de acceso de cuenta suspendida', mensaje: `${usuario.nombre} ${usuario.apellido} intentó iniciar sesión con una cuenta suspendida.` })));
+};
+
 const notificacionReserva = (evento) => {
   const datos = {
     reservada: { tipo: 'reserva', titulo: 'Nueva cita', mensaje: 'Se ha creado una nueva cita.' },
@@ -82,8 +88,12 @@ const login = async (req, res) => {
     const password = req.body.password;
     if (!email || typeof password !== 'string' || !password) return renderLogin(req, res, 'Ingresa correo y contraseña.');
     const usuario = await Usuario.findOne({ email }).select('+password +tokenVersion');
-    if (!usuario || usuario.activo === false || !(await usuario.compararPassword(password))) {
+    if (!usuario || !(await usuario.compararPassword(password))) {
       return renderLogin(req, res, 'Correo o contraseña incorrectos.');
+    }
+    if (usuario.activo === false) {
+      void avisarIntentoCuentaSuspendida(usuario).catch((error) => console.error('Error al avisar suspensión:', error.message));
+      return renderLogin(req, res, 'Tu cuenta está suspendida. Contacta al administrador para solicitar acceso.');
     }
     if (usuario.email_verificado === false) return renderLogin(req, res, 'Verifica tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.');
     setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion || 0));
@@ -313,7 +323,7 @@ const notificarReserva = async (reservaId, evento) => {
   if (!destinatarios.length || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   const asunto = `TecnoCorte: ${evento} - ${reserva.servicio || 'cita'}`;
   const texto = `La cita de ${reserva.servicio || 'servicio'} para el ${fecha} a las ${reserva.hora} en ${reserva.peluqueria?.nombre || 'TecnoCorte'} fue ${evento.toLowerCase()}.`;
-  await Promise.allSettled(destinatarios.map(({ to, url }) => enviarCorreoBonito(transporter, {
+  const resultados = await Promise.allSettled(destinatarios.map(({ to, url }) => enviarCorreoBonito(transporter, {
     to,
     subject: asunto,
     title: `Cita ${evento}`,
@@ -323,6 +333,7 @@ const notificarReserva = async (reservaId, evento) => {
     ...(url ? { action: { label: url.includes('/editar-reserva/') ? 'Modificar mi cita' : 'Abrir mi panel', url } } : {}),
     text: texto
   })));
+  resultados.filter((resultado) => resultado.status === 'rejected').forEach((resultado) => console.error('Error al enviar notificación de reserva:', resultado.reason?.message || 'SMTP rechazó el correo'));
 };
 const notificarSuspension = async (reservaId) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
@@ -346,7 +357,7 @@ const notificarSuspension = async (reservaId) => {
     content: `<p>El barbero ${escaparHtml(reserva.peluquero?.nombre || '')} no está disponible para tu cita del ${new Date(reserva.fecha).toLocaleDateString('es-CO')} a las ${escaparHtml(reserva.hora)}.</p><p>Entra a tu perfil para modificarla y elegir otro barbero.</p>`,
     ...(url ? { action: { label: 'Reprogramar cita', url } } : {}),
     text: 'Tu barbero ya no está disponible. Entra a tu perfil para reprogramar tu cita.'
-  }).catch(() => {});
+  }).catch((error) => console.error('Error al enviar aviso de suspensión:', error.message));
 };
 
 const notificarCuentaCreada = async (usuario) => {

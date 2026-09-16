@@ -159,7 +159,7 @@
             <div class="mb-6 flex flex-wrap items-center justify-center gap-3 text-base text-on-surface font-label md:text-lg">
               <span class="inline-flex items-center gap-2"><span class="material-symbols-outlined text-primary">schedule</span>45 Min</span>
               <span class="text-outline-variant">•</span>
-              <span class="font-headline text-2xl text-on-surface md:text-3xl">$40.000 <span class="ml-1 text-sm text-on-surface-variant">COP</span></span>
+                <span class="font-headline text-2xl text-on-surface md:text-3xl"><%= fmtMoneda(servicios.find((item) => item.nombre === 'Corte de Cabello').precio) %> <span class="ml-1 text-sm text-on-surface-variant">COP</span></span>
             </div>
             <p class="mx-auto max-w-2xl text-base leading-relaxed text-on-surface-variant md:text-lg">Corte moderno con lavado incluido y asesoría personalizada para encontrar el estilo que mejor se adapte a tu rostro y rutina.</p>
           </div>
@@ -202,7 +202,7 @@
             <div class="mb-6 flex flex-wrap items-center justify-center gap-3 text-base text-on-surface font-label md:text-lg">
               <span class="inline-flex items-center gap-2"><span class="material-symbols-outlined text-primary">schedule</span>30 Min</span>
               <span class="text-outline-variant">•</span>
-              <span class="font-headline text-2xl text-on-surface md:text-3xl">$30.000 <span class="ml-1 text-sm text-on-surface-variant">COP</span></span>
+               <span class="font-headline text-2xl text-on-surface md:text-3xl"><%= fmtMoneda(servicios.find((item) => item.nombre === 'Arreglo de Barba').precio) %> <span class="ml-1 text-sm text-on-surface-variant">COP</span></span>
             </div>
             <p class="mx-auto max-w-2xl text-base leading-relaxed text-on-surface-variant md:text-lg">Perfilado preciso, toalla caliente, hidratación y cuidado de la barba para dejarla con una forma limpia y bien definida.</p>
           </div>
@@ -254,7 +254,7 @@
               </span>
               <span class="text-outline-variant">•</span>
               <span class="font-headline text-2xl text-on-surface md:text-3xl">
-                $60.000
+                 <%= fmtMoneda(servicios.find((item) => item.nombre === 'Combo Completo').precio) %>
                 <span class="ml-1 text-sm text-on-surface-variant">COP</span>
               </span>
             </div>

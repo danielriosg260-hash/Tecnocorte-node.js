@@ -19,9 +19,9 @@ const { clearSessionCookie, readCart, setSessionCookie, writeCart } = require('.
 const { datosPublicos, generarToken, normalizarEmail } = require('./Auth.controller');
 
 const SERVICIOS = [
-  { nombre: 'Corte de Cabello', precio: 30000, duracion: '45 min', minutos: 45, descripcion: 'Corte personalizado y acabado profesional.' },
-  { nombre: 'Arreglo de Barba', precio: 22000, duracion: '30 min', minutos: 30, descripcion: 'Perfilado, toalla caliente y cuidado de la barba.' },
-  { nombre: 'Combo Completo', precio: 48000, duracion: '75 min', minutos: 75, descripcion: 'Corte de cabello y arreglo de barba.' }
+  { nombre: 'Corte de Cabello', precio: 40000, duracion: '45 min', minutos: 45, descripcion: 'Corte personalizado y acabado profesional.' },
+  { nombre: 'Arreglo de Barba', precio: 30000, duracion: '30 min', minutos: 30, descripcion: 'Perfilado, toalla caliente y cuidado de la barba.' },
+  { nombre: 'Combo Completo', precio: 60000, duracion: '75 min', minutos: 75, descripcion: 'Corte de cabello y arreglo de barba.' }
 ];
 const ROLES = [['Cliente', 'Cliente'], ['Barbero', 'Barbero'], ['Admin', 'Administrador']];
 const CATEGORIAS = [['cabello', 'Cabello'], ['barba', 'Barba'], ['accesorios', 'Accesorios'], ['cuidado', 'Cuidado personal']];
@@ -194,7 +194,7 @@ const cargarProductos = async () => (await Producto.find().sort({ createdAt: -1 
 
 const tienda = async (req, res) => res.render('usuarios/usuario_tienda', { layout: false, active: 'tienda', productos: await cargarProductos() });
 const peluquerias = async (req, res) => res.render('usuarios/usuario_peluquerias', { layout: false, active: 'barberias', peluquerias: (await Peluqueria.find()).map(plain) });
-const servicios = (req, res) => res.render('usuarios/usuario_servicios', { layout: false, active: 'servicios' });
+const servicios = (req, res) => res.render('usuarios/usuario_servicios', { layout: false, active: 'servicios', servicios: SERVICIOS });
 
 const horariosBase = () => Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((day) => [day, { activo: day < 6, inicio: '09:00', fin: '18:00' }]));
 
@@ -277,24 +277,43 @@ const notificarReserva = async (reservaId, evento) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
   if (!reserva) return;
   const fecha = new Date(reserva.fecha).toLocaleDateString('es-CO');
-  const destinatarios = [reserva.cliente?.email, reserva.peluquero?.email].filter(Boolean);
+  const base = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
+  let baseValida = '';
+  try {
+    const url = new URL(base);
+    if (['http:', 'https:'].includes(url.protocol)) baseValida = base;
+  } catch {
+    // El correo se puede enviar sin botón si APP_URL no está configurada correctamente.
+  }
+  const destinatarios = [
+    reserva.cliente?.email ? { to: reserva.cliente.email, url: baseValida ? `${baseValida}/editar-reserva/${reserva._id}` : '' } : null,
+    reserva.peluquero?.email ? { to: reserva.peluquero.email, url: baseValida ? `${baseValida}/barbero` : '' } : null
+  ].filter(Boolean);
   if (!destinatarios.length || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   const asunto = `TecnoCorte: ${evento} - ${reserva.servicio || 'cita'}`;
   const texto = `La cita de ${reserva.servicio || 'servicio'} para el ${fecha} a las ${reserva.hora} en ${reserva.peluqueria?.nombre || 'TecnoCorte'} fue ${evento.toLowerCase()}.`;
-  await Promise.allSettled(destinatarios.map((to) => enviarCorreoBonito(transporter, {
+  await Promise.allSettled(destinatarios.map(({ to, url }) => enviarCorreoBonito(transporter, {
     to,
     subject: asunto,
     title: `Cita ${evento}`,
     preheader: `Actualización de tu cita de ${reserva.servicio || 'servicio'}.`,
     greeting: 'Hola,',
     content: `<p>${escaparHtml(texto)}</p><p>Si necesitas modificarla, entra a tu panel de TecnoCorte.</p>`,
-    action: { label: 'Abrir mi panel', url: `${String(process.env.APP_URL || '').replace(/\/$/, '')}/dashboard` },
+    ...(url ? { action: { label: url.includes('/editar-reserva/') ? 'Modificar mi cita' : 'Abrir mi panel', url } } : {}),
     text: texto
   })));
 };
 const notificarSuspension = async (reservaId) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
   if (!reserva?.cliente?.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  const base = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
+  let url = '';
+  try {
+    const parsed = new URL(base);
+    if (['http:', 'https:'].includes(parsed.protocol)) url = `${base}/editar-reserva/${reserva._id}`;
+  } catch {
+    // No se añade un enlace si APP_URL no es válida.
+  }
   await enviarCorreoBonito(transporter, {
     to: reserva.cliente.email,
     subject: 'TecnoCorte: debes reprogramar tu cita',
@@ -302,7 +321,7 @@ const notificarSuspension = async (reservaId) => {
     preheader: 'Tu barbero ya no está disponible para esta cita.',
     greeting: `Hola ${reserva.cliente.nombre},`,
     content: `<p>El barbero ${escaparHtml(reserva.peluquero?.nombre || '')} no está disponible para tu cita del ${new Date(reserva.fecha).toLocaleDateString('es-CO')} a las ${escaparHtml(reserva.hora)}.</p><p>Entra a tu perfil para modificarla y elegir otro barbero.</p>`,
-    action: { label: 'Reprogramar cita', url: `${String(process.env.APP_URL || '').replace(/\/$/, '')}/perfil` },
+    ...(url ? { action: { label: 'Reprogramar cita', url } } : {}),
     text: 'Tu barbero ya no está disponible. Entra a tu perfil para reprogramar tu cita.'
   }).catch(() => {});
 };
@@ -312,7 +331,7 @@ const preConfirmar = async (req, res) => {
   if (!servicio || !esId(req.body.peluqueria) || !esId(req.body.peluquero) || !req.body.fecha || !req.body.hora) return res.redirect('/reservar-cita');
   const [peluqueria, peluquero] = await Promise.all([Peluqueria.findById(req.body.peluqueria), Usuario.findOne({ _id: req.body.peluquero, rol: 'Barbero', activo: { $ne: false } })]);
   if (!peluqueria || !peluquero) return res.redirect('/reservar-cita');
-  const datos = { servicio: servicio.nombre, duracion: servicio.minutos, fecha: req.body.fecha, hora: req.body.hora, peluqueria: plain(peluqueria), peluquero: plain(peluquero) };
+  const datos = { servicio: servicio.nombre, precio: servicio.precio, duracion: servicio.minutos, fecha: req.body.fecha, hora: req.body.hora, peluqueria: plain(peluqueria), peluquero: plain(peluquero) };
   return res.render('usuarios/usuario_confirmar_reserva', { layout: false, datos });
 };
 
@@ -375,20 +394,21 @@ const editarReserva = async (req, res) => {
 };
 
 const actualizarReserva = async (req, res) => {
-  const servicio = findServicio(req.body.servicio);
-  const current = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id });
-  if (!current) return res.redirect('/perfil');
-  if (!servicio || !dosHorasAntes(fechaClave(current.fecha), current.hora)) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
-  const error = await validarCita({ peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: req.body.fecha, hora: req.body.hora, minutos: servicio.minutos, excluir: current._id });
-  if (error) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent(error)}`);
   try {
+    const servicio = findServicio(req.body.servicio);
+    const current = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id });
+    if (!current) return res.redirect('/perfil');
+    if (!servicio || !dosHorasAntes(fechaClave(current.fecha), current.hora)) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`);
+    const error = await validarCita({ peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: req.body.fecha, hora: req.body.hora, minutos: servicio.minutos, excluir: current._id });
+    if (error) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent(error)}`);
     await Reserva.findOneAndUpdate({ _id: current._id }, { servicio: servicio.nombre, peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: new Date(`${req.body.fecha}T00:00:00`), hora: req.body.hora, minutos: servicio.minutos, estado: 'Pendiente', requiere_reprogramacion: false, motivo_reprogramacion: '' }, { runValidators: true });
+    void notificarReserva(current._id, 'modificada');
+    return res.redirect('/perfil');
   } catch (updateError) {
+    console.error('Error al modificar reserva:', updateError.message);
     const message = updateError.code === 11000 ? 'Ese horario ya está ocupado.' : 'No se pudo modificar la cita.';
     return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent(message)}`);
   }
-  void notificarReserva(current._id, 'modificada');
-  return res.redirect('/perfil');
 };
 
 const cancelarReserva = async (req, res) => {

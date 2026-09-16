@@ -17,6 +17,7 @@ const Horario = require('../models/Horario.model');
 const Bloqueo = require('../models/Bloqueo.model');
 const Mensaje = require('../models/Mensaje.model');
 const Ingreso = require('../models/Ingreso.model');
+const Notificacion = require('../models/Notificacion.model');
 const { clearSessionCookie, readCart, setSessionCookie, writeCart } = require('../config/session');
 const { datosPublicos, generarToken, normalizarEmail } = require('./Auth.controller');
 
@@ -52,6 +53,22 @@ const inicioDelDia = () => {
 };
 const usuarioView = (doc) => plain(doc);
 const errorMessage = (error) => error?.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo guardar la información.';
+
+const notificacionReserva = (evento) => {
+  const datos = {
+    reservada: { tipo: 'reserva', titulo: 'Nueva cita', mensaje: 'Se ha creado una nueva cita.' },
+    confirmada: { tipo: 'reserva', titulo: 'Cita confirmada', mensaje: 'La cita fue confirmada.' },
+    modificada: { tipo: 'modificacion', titulo: 'Cita modificada', mensaje: 'La cita fue modificada.' },
+    cancelada: { tipo: 'cancelacion', titulo: 'Cita cancelada', mensaje: 'La cita fue cancelada.' }
+  };
+  return datos[evento] || { tipo: 'reserva', titulo: 'Actualización de cita', mensaje: 'Tu cita fue actualizada.' };
+};
+
+const crearNotificacionesReserva = async (reserva, evento) => {
+  const datos = notificacionReserva(evento);
+  const usuarios = [reserva.cliente?._id || reserva.cliente, reserva.peluquero?._id || reserva.peluquero].filter(Boolean);
+  await Notificacion.insertMany([...new Set(usuarios.map(String))].map((usuario) => ({ ...datos, usuario, reserva: reserva._id })));
+};
 
 const renderLogin = (req, res, error = '') => res.render('publicos/login', {
   layout: false,
@@ -278,6 +295,7 @@ const validarCita = async ({ peluqueria, peluquero, fecha, hora, minutos, exclui
 const notificarReserva = async (reservaId, evento) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
   if (!reserva) return;
+  void crearNotificacionesReserva(reserva, evento).catch((error) => console.error('Error al crear notificaciones:', error.message));
   const fecha = new Date(reserva.fecha).toLocaleDateString('es-CO');
   const base = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
   let baseValida = '';
@@ -307,7 +325,9 @@ const notificarReserva = async (reservaId, evento) => {
 };
 const notificarSuspension = async (reservaId) => {
   const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
-  if (!reserva?.cliente?.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!reserva?.cliente) return;
+  void Notificacion.create({ usuario: reserva.cliente._id, reserva: reserva._id, tipo: 'suspension', titulo: 'Debes reprogramar tu cita', mensaje: 'Tu barbero ya no está disponible para esta cita.' }).catch((error) => console.error('Error al crear notificación:', error.message));
+  if (!reserva.cliente.email || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
   const base = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
   let url = '';
   try {
@@ -372,6 +392,21 @@ const perfil = async (req, res) => {
   const citas = reservas.map((reserva) => ({ ...plain(reserva), peluqueria: plain(reserva.peluqueria), peluquero: plain(reserva.peluquero) || { nombre: '', apellido: '', activo: false }, peluqueria_id: String(reserva.peluqueria?._id || ''), peluquero_id: String(reserva.peluquero?._id || '') }));
   const calificaciones = await Calificacion.find({ cliente: req.usuario._id }).select('reserva').lean();
   return res.render('usuarios/usuario_perfil', { layout: false, usuario: usuarioView(req.usuario), citas, pedidos: await cargarPedidosUsuario(req.usuario._id), calificaciones_reservas: calificaciones.map((item) => String(item.reserva)) });
+};
+
+const listarNotificaciones = async (req, res) => {
+  const notificaciones = await Notificacion.find({ usuario: req.usuario._id }).populate('reserva', 'fecha hora servicio estado').sort({ createdAt: -1 }).limit(50).lean();
+  return res.render('usuarios/usuario_notificaciones', { layout: false, notificaciones });
+};
+
+const listarNotificacionesBarbero = async (req, res) => {
+  const notificaciones = await Notificacion.find({ usuario: req.usuario._id }).populate('reserva', 'fecha hora servicio estado').sort({ createdAt: -1 }).limit(50).lean();
+  return res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones });
+};
+
+const marcarNotificacionesLeidas = async (req, res) => {
+  await Notificacion.updateMany({ usuario: req.usuario._id, leida: false }, { $set: { leida: true } });
+  return res.redirect(req.usuario.rol === 'Barbero' ? '/barbero/notificaciones' : '/notificaciones');
 };
 
 const actualizarPerfil = async (req, res) => {
@@ -770,10 +805,17 @@ const adminIngresos = async (req, res) => {
 };
 
 const barberoDashboard = async (req, res) => {
-  const citas = (await Reserva.find({ peluquero: req.usuario._id }).populate('cliente peluqueria').sort({ fecha: 1 })).map((reserva) => ({ ...plain(reserva), cliente: plain(reserva.cliente), peluqueria: plain(reserva.peluqueria) }));
+  const reservas = await Reserva.find({ peluquero: req.usuario._id }).populate('cliente peluqueria').sort({ fecha: 1, hora: 1 });
+  const citas = reservas.map((reserva) => ({ ...plain(reserva), cliente: plain(reserva.cliente), peluqueria: plain(reserva.peluqueria) }));
   const citasHoy = citas.filter((cita) => fechaClave(cita.fecha) === fechaClave(new Date()));
   const completadas = citas.filter((cita) => cita.estado === 'Completada');
-  return res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', citas, citas_hoy: citasHoy, citas_pendientes: citas.filter((cita) => cita.estado === 'Pendiente'), citas_completadas: completadas, citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'), total_citas: citas.length, ingresos_hoy: 0, ingresos_total: completadas.length, calificaciones: [], promedio: 0, total_calificaciones: 0, portafolio: req.usuario.portafolio || [], error: req.query.error || '' });
+  const ahora = Date.now();
+  const futuras = citas.filter((cita) => !['Completada', 'Cancelada'].includes(cita.estado) && new Date(`${fechaClave(cita.fecha)}T${cita.hora}:00`).getTime() > ahora);
+  const ingresos = (lista) => lista.reduce((total, cita) => total + (findServicio(cita.servicio)?.precio || 0), 0);
+  const calificaciones = (await Calificacion.find({ peluquero: req.usuario._id }).populate('cliente', 'nombre apellido').sort({ createdAt: -1 }).limit(10)).map(plain);
+  const promedio = calificaciones.length ? Math.round((calificaciones.reduce((total, item) => total + item.puntuacion, 0) / calificaciones.length) * 10) / 10 : 0;
+  const noLeidas = await Notificacion.countDocuments({ usuario: req.usuario._id, leida: false });
+  return res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', citas, citas_hoy: citasHoy, citas_pendientes: citas.filter((cita) => cita.estado === 'Pendiente'), citas_completadas: completadas, citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'), total_citas: citas.length, ingresos_hoy: ingresos(citasHoy.filter((cita) => cita.estado === 'Completada')), ingresos_total: ingresos(completadas), calificaciones, promedio, total_calificaciones: calificaciones.length, proxima: futuras[0] || null, portafolio: req.usuario.portafolio || [], notificaciones_no_leidas: noLeidas, error: req.query.error || '' });
 };
 
 const barberoNuevaCita = async (req, res) => res.render('peluqueros/peluquero_crear_cita', { layout: 'layouts/dashboard', error: req.query.error || '', clientes: (await Usuario.find({ rol: 'Cliente', activo: { $ne: false } })).map(plain), peluquerias: (await Peluqueria.find()).map(plain), servicios: SERVICIOS, reserva_estados: ESTADOS_RESERVA.map(([value, label]) => ({ value, label })) });

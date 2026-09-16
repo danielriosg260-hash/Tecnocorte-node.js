@@ -58,8 +58,8 @@ router.post('/pre-confirmar', exigirSesion, asyncHandler(pageController.preConfi
 router.post('/confirmar-reserva', exigirSesion, asyncHandler(pageController.confirmarReserva));
 router.get('/perfil', exigirSesion, asyncHandler(pageController.perfil));
 router.post('/perfil', exigirSesion, uploadImage, asyncHandler(pageController.actualizarPerfil));
-router.get('/notificaciones', exigirSesion, (req, res) => res.render('usuarios/usuario_notificaciones', { layout: false, notificaciones: [] }));
-router.post('/notificaciones/leidas', exigirSesion, (req, res) => res.redirect('/notificaciones'));
+router.get('/notificaciones', exigirSesion, asyncHandler(pageController.listarNotificaciones));
+router.post('/notificaciones/leidas', exigirSesion, asyncHandler(pageController.marcarNotificacionesLeidas));
 router.get('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
 router.post('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
 router.get('/editar-reserva/:id', exigirSesion, asyncHandler(pageController.editarReserva));
@@ -81,7 +81,8 @@ router.get('/barbero/perfil', exigirRol('Barbero'), asyncHandler(pageController.
 router.post('/barbero/perfil', exigirRol('Barbero'), uploadImage, asyncHandler(pageController.actualizarPerfil));
 router.post('/barbero/obras', exigirRol('Barbero'), uploadPortfolio, asyncHandler(pageController.subirObras));
 router.post('/barbero/obras/:id/eliminar', exigirRol('Barbero'), asyncHandler(pageController.eliminarObra));
-router.get('/barbero/notificaciones', exigirRol('Barbero'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
+router.get('/barbero/notificaciones', exigirRol('Barbero'), asyncHandler(pageController.listarNotificacionesBarbero));
+router.post('/barbero/notificaciones/leidas', exigirRol('Barbero'), asyncHandler(pageController.marcarNotificacionesLeidas));
 router.get('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoNuevaCita));
 router.post('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoGuardarCita));
 router.get('/barbero/citas/:id/editar', exigirRol('Barbero'), asyncHandler(pageController.barberoEditarReserva));

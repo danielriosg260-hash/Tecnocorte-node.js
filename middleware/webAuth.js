@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario.model');
+const Notificacion = require('../models/Notificacion.model');
 const { getSessionToken, readCart } = require('../config/session');
 
 const cargarSesion = async (req, res, next) => {
@@ -23,6 +24,7 @@ const cargarSesion = async (req, res, next) => {
       res.locals.usuario = usuario;
       res.locals.usuario_actual = usuario;
       res.locals.rol = usuario.rol || '';
+      res.locals.notificaciones_no_leidas = await Notificacion.countDocuments({ usuario: usuario._id, leida: false });
     }
   } catch {
     // A stale browser cookie behaves like an anonymous request.

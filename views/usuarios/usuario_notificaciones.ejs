@@ -114,10 +114,10 @@
           <p class="font-body text-on-surface"><%= notificacion.mensaje %></p>
           <div class="flex items-center justify-between mt-3">
             <p class="text-on-surface-variant text-xs"><%= fmtFecha(notificacion.fecha, 'd/m/Y H:i') %></p>
-            <% if (notificacion.reserva) { %><% if (notificacion.reserva.estado == 'Pendiente' && String(notificacion.mensaje).indexOf('suspendido') !== -1) { %><a
+             <% if (notificacion.reserva) { %><% if (notificacion.reserva.estado == 'Pendiente' && notificacion.tipo === 'suspension') { %><a
               href="/editar-reserva/<%= notificacion.reserva.id %>"
-              class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-primary transition-opacity hover:opacity-90"><span
-                class="material-symbols-outlined text-sm">edit_calendar</span>Modificar cita</a><% } else if (notificacion.reserva.estado == 'Pendiente' && String(notificacion.mensaje).indexOf('Confírmala') !== -1) { %><form
+               class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-primary transition-opacity hover:opacity-90"><span
+                 class="material-symbols-outlined text-sm">edit_calendar</span>Modificar cita</a><% } else if (notificacion.reserva.estado == 'Pendiente' && notificacion.tipo === 'reserva') { %><form
               method="post"
               action="/confirmar-cita/<%= notificacion.reserva.id %>"><!-- csrf: auth JWT --><button
                 type="submit"

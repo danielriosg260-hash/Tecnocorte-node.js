@@ -11,18 +11,18 @@
 
   <div class="p-6 md:p-12 max-w-3xl mx-auto w-full">
     <h2 class="font-headline text-4xl text-on-surface tracking-tight mb-2">Notificaciones</h2>
-    <p class="font-body text-on-surface-variant mb-10">Mensajes y avisos recientes.</p>
+     <div class="flex flex-wrap items-center justify-between gap-4 mb-10"><p class="font-body text-on-surface-variant">Mensajes y avisos recientes.</p><form method="post" action="/barbero/notificaciones/leidas"><button type="submit" class="rounded-md border border-outline-variant/30 px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary hover:border-primary">Marcar como leídas</button></form></div>
 
     <div class="space-y-4">
       <% if (notificaciones && notificaciones.length) { %>
       <% notificaciones.forEach(function(notificacion) { %>
-      <article class="bg-surface-container-low rounded-xl p-6 ambient-glow flex gap-4">
+       <article class="bg-surface-container-low rounded-xl p-6 ambient-glow flex gap-4 <% if (notificacion.leida) { %>opacity-75<% } else { %>border-l-2 border-primary<% } %>">
         <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
           <span class="material-symbols-outlined text-primary text-lg">notifications</span>
         </div>
         <div class="flex-1">
-          <p class="font-body text-on-surface"><%= notificacion.mensaje %></p>
-          <p class="text-on-surface-variant text-xs mt-2"><%= fmtFecha(notificacion.fecha, 'dd/MM/yyyy HH:mm') %></p>
+           <p class="font-body font-semibold text-on-surface"><%= notificacion.titulo %></p><p class="font-body text-on-surface-variant text-sm mt-1"><%= notificacion.mensaje %></p>
+           <p class="text-on-surface-variant text-xs mt-2"><%= fmtFecha(notificacion.createdAt, 'dd/MM/yyyy HH:mm') %></p>
         </div>
       </article>
       <% }); %>

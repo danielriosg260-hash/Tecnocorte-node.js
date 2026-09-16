@@ -14,6 +14,11 @@ const usuarioSchema = new mongoose.Schema({
     url: { type: String, default: '' },
     public_id: { type: String, default: '' }
   },
+  portafolio: [{
+    url: { type: String, required: true },
+    public_id: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
   resetPasswordToken: { type: String, select: false },
   resetPasswordExpires: { type: Date, select: false },
   tokenVersion: { type: Number, default: 0, min: 0, select: false },

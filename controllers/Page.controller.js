@@ -1,6 +1,8 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
+const path = require('path');
 const transporter = require('../config/email');
 const { enviarCorreoBonito, escapeHtml: escaparHtml } = require('../config/emailTemplate');
 const { guardarCodigo, enviarCodigo, verificarCodigo } = require('../config/emailVerification');
@@ -387,6 +389,30 @@ const actualizarPerfil = async (req, res) => {
   return res.redirect('/perfil');
 };
 
+const subirObras = async (req, res) => {
+  const usuario = await Usuario.findById(req.usuario._id);
+  if (!usuario) return res.redirect('/login');
+  const archivos = Array.isArray(req.files) ? req.files : [];
+  if (!archivos.length) return res.redirect('/barbero?error=' + encodeURIComponent('Selecciona al menos una imagen.'));
+  const obras = archivos.map((archivo) => ({ url: `/uploads/${archivo.filename}`, public_id: archivo.filename }));
+  usuario.portafolio = [...(usuario.portafolio || []), ...obras].slice(-24);
+  await usuario.save();
+  return res.redirect('/barbero');
+};
+
+const eliminarObra = async (req, res) => {
+  const publicId = String(req.params.id || '');
+  if (!/^[a-f0-9-]+\.(?:jpg|png|webp)$/i.test(publicId)) return res.redirect('/barbero');
+  const usuario = await Usuario.findById(req.usuario._id);
+  if (!usuario) return res.redirect('/login');
+  const existe = (usuario.portafolio || []).some((obra) => obra.public_id === publicId);
+  if (!existe) return res.redirect('/barbero');
+  usuario.portafolio = usuario.portafolio.filter((obra) => obra.public_id !== publicId);
+  await usuario.save();
+  await fs.promises.unlink(path.join(__dirname, '..', 'public', 'uploads', publicId)).catch(() => {});
+  return res.redirect('/barbero');
+};
+
 const editarReserva = async (req, res) => {
   const reserva = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id }).populate('peluquero peluqueria');
   if (!reserva) return res.redirect('/perfil');
@@ -747,7 +773,7 @@ const barberoDashboard = async (req, res) => {
   const citas = (await Reserva.find({ peluquero: req.usuario._id }).populate('cliente peluqueria').sort({ fecha: 1 })).map((reserva) => ({ ...plain(reserva), cliente: plain(reserva.cliente), peluqueria: plain(reserva.peluqueria) }));
   const citasHoy = citas.filter((cita) => fechaClave(cita.fecha) === fechaClave(new Date()));
   const completadas = citas.filter((cita) => cita.estado === 'Completada');
-  return res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', citas, citas_hoy: citasHoy, citas_pendientes: citas.filter((cita) => cita.estado === 'Pendiente'), citas_completadas: completadas, citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'), total_citas: citas.length, ingresos_hoy: 0, ingresos_total: completadas.length, calificaciones: [], promedio: 0, total_calificaciones: 0 });
+  return res.render('peluqueros/peluquero_dashboard', { layout: 'layouts/dashboard', citas, citas_hoy: citasHoy, citas_pendientes: citas.filter((cita) => cita.estado === 'Pendiente'), citas_completadas: completadas, citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'), total_citas: citas.length, ingresos_hoy: 0, ingresos_total: completadas.length, calificaciones: [], promedio: 0, total_calificaciones: 0, portafolio: req.usuario.portafolio || [], error: req.query.error || '' });
 };
 
 const barberoNuevaCita = async (req, res) => res.render('peluqueros/peluquero_crear_cita', { layout: 'layouts/dashboard', error: req.query.error || '', clientes: (await Usuario.find({ rol: 'Cliente', activo: { $ne: false } })).map(plain), peluquerias: (await Peluqueria.find()).map(plain), servicios: SERVICIOS, reserva_estados: ESTADOS_RESERVA.map(([value, label]) => ({ value, label })) });
@@ -818,6 +844,7 @@ module.exports = {
   adminHorarios, adminPeluquerias, adminPeluqueros, adminProductos, adminReservas, adminSuspenderUsuario, adminUsuarios,
   adminCrearBloqueo, adminIngresos, adminMensajes, ayuda, actualizarCarrito, actualizarPerfil, actualizarReserva, barberoDashboard, barberoEstadoCita,
   barberoActualizarReserva, barberoEditarReserva, barberoGuardarCita, barberoNuevaCita, barberoPerfil, cambiarPassword, cancelarReserva, calificar, confirmarCita, confirmarReserva,
+  subirObras, eliminarObra,
   dashboard, editarReserva, eliminarCarrito, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
   reservarCita, restablecerPassword, renderLogin, renderReset, solicitarRecuperacion, servicios, tienda, verificarEmailWeb, verCarrito
 };

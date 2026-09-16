@@ -70,12 +70,16 @@ app.locals.fmtFecha = (valor, patron) => {
     G: String(fecha.getHours()),
     i: String(fecha.getMinutes()).padStart(2, '0')
   };
-  const tokens = patron.match(/[dDjlNwSFmMnYyHGighis]/g) || [];
-  let salida = patron;
-  tokens.forEach((tok) => {
-    salida = salida.replace(new RegExp(tok, 'g'), mapa[tok] || tok);
+  const tokens = /yyyy|MMM|MM|dd|HH|mm|d|j|m|n|M|F|Y|y|H|G|i/g;
+  return patron.replace(tokens, (token) => {
+    if (token === 'dd') return String(fecha.getDate()).padStart(2, '0');
+    if (token === 'MM') return String(fecha.getMonth() + 1).padStart(2, '0');
+    if (token === 'yyyy') return String(fecha.getFullYear());
+    if (token === 'MMM') return meses[fecha.getMonth()].slice(0, 3);
+    if (token === 'HH') return String(fecha.getHours()).padStart(2, '0');
+    if (token === 'mm') return String(fecha.getMinutes()).padStart(2, '0');
+    return mapa[token] || token;
   });
-  return salida;
 };
 app.locals.fmtHora = (valor) => {
   if (!valor) return '';

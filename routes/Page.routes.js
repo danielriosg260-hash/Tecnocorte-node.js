@@ -26,6 +26,10 @@ const uploadImage = (req, res, next) => upload.single('foto')(req, res, (error) 
   if (error) return res.status(400).send('La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
   next();
 });
+const uploadPortfolio = (req, res, next) => upload.array('obras', 6)(req, res, (error) => {
+  if (error) return res.status(400).send('Puedes subir hasta 6 imágenes JPG, PNG o WebP de menos de 2 MB cada una.');
+  next();
+});
 
 router.get('/', (req, res) => res.render('publicos/index', { layout: false, active: 'inicio' }));
 router.get('/login', (req, res) => pageController.renderLogin(req, res));
@@ -75,6 +79,8 @@ router.get('/pedido-exitoso/:id', exigirSesion, asyncHandler(pageController.pedi
 router.get('/barbero', exigirRol('Barbero'), asyncHandler(pageController.barberoDashboard));
 router.get('/barbero/perfil', exigirRol('Barbero'), asyncHandler(pageController.barberoPerfil));
 router.post('/barbero/perfil', exigirRol('Barbero'), uploadImage, asyncHandler(pageController.actualizarPerfil));
+router.post('/barbero/obras', exigirRol('Barbero'), uploadPortfolio, asyncHandler(pageController.subirObras));
+router.post('/barbero/obras/:id/eliminar', exigirRol('Barbero'), asyncHandler(pageController.eliminarObra));
 router.get('/barbero/notificaciones', exigirRol('Barbero'), (req, res) => res.render('peluqueros/peluquero_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
 router.get('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoNuevaCita));
 router.post('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoGuardarCita));

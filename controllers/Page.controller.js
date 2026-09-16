@@ -369,13 +369,13 @@ const confirmarReserva = async (req, res) => {
     const message = creationError.code === 11000 ? 'Ese horario acaba de ser reservado por otra persona. Elige otra hora.' : 'No se pudo reservar la cita. Inténtalo de nuevo.';
     return res.redirect('/reservar-cita?error=' + encodeURIComponent(message));
   }
-  void notificarReserva(reserva._id, 'reservada');
+  void notificarReserva(reserva._id, 'reservada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/perfil');
 };
 
 const confirmarCita = async (req, res) => {
   const reserva = await Reserva.findOneAndUpdate({ _id: req.params.id, cliente: req.usuario._id, estado: 'Pendiente' }, { estado: 'Confirmada' }, { new: true });
-  if (reserva) void notificarReserva(reserva._id, 'confirmada');
+  if (reserva) void notificarReserva(reserva._id, 'confirmada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/notificaciones');
 };
 
@@ -465,7 +465,7 @@ const actualizarReserva = async (req, res) => {
     const error = await validarCita({ peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: req.body.fecha, hora: req.body.hora, minutos: servicio.minutos, excluir: current._id });
     if (error) return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent(error)}`);
     await Reserva.findOneAndUpdate({ _id: current._id }, { servicio: servicio.nombre, peluqueria: req.body.peluqueria, peluquero: req.body.peluquero, fecha: new Date(`${req.body.fecha}T00:00:00`), hora: req.body.hora, minutos: servicio.minutos, estado: 'Pendiente', requiere_reprogramacion: false, motivo_reprogramacion: '' }, { runValidators: true });
-    void notificarReserva(current._id, 'modificada');
+    void notificarReserva(current._id, 'modificada').catch((error) => console.error('Error al notificar reserva:', error.message));
     return res.redirect('/perfil');
   } catch (updateError) {
     console.error('Error al modificar reserva:', updateError.message);
@@ -478,7 +478,7 @@ const cancelarReserva = async (req, res) => {
   const reserva = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id, estado: { $nin: ['Completada', 'Cancelada'] } });
   if (reserva && dosHorasAntes(fechaClave(reserva.fecha), reserva.hora)) {
     await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
-    void notificarReserva(reserva._id, 'cancelada');
+    void notificarReserva(reserva._id, 'cancelada').catch((error) => console.error('Error al notificar reserva:', error.message));
   }
   return res.redirect('/perfil');
 };
@@ -685,13 +685,13 @@ const adminGuardarReserva = async (req, res) => {
   } catch (creationError) {
     return res.redirect('/admin/reservas?error=' + encodeURIComponent(creationError.code === 11000 ? 'Ese horario ya está ocupado.' : 'No se pudo guardar la cita.'));
   }
-  if (reserva) void notificarReserva(reserva._id, req.params.id ? 'modificada' : 'reservada');
+  if (reserva) void notificarReserva(reserva._id, req.params.id ? 'modificada' : 'reservada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/admin/reservas');
 };
 
 const adminCancelarReserva = async (req, res) => {
   const reserva = await Reserva.findByIdAndUpdate(req.params.id, { estado: 'Cancelada' }, { new: true });
-  if (reserva) void notificarReserva(reserva._id, 'cancelada');
+  if (reserva) void notificarReserva(reserva._id, 'cancelada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/admin/reservas');
 };
 
@@ -843,7 +843,7 @@ const barberoActualizarReserva = async (req, res) => {
     const message = updateError.code === 11000 ? 'Ese horario ya está ocupado.' : 'No se pudo modificar la cita.';
     return res.redirect(`/barbero/citas/${req.params.id}/editar?error=${encodeURIComponent(message)}`);
   }
-  void notificarReserva(current._id, 'modificada');
+  void notificarReserva(current._id, 'modificada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/barbero');
 };
 
@@ -858,7 +858,7 @@ const barberoGuardarCita = async (req, res) => {
   } catch (creationError) {
     return res.redirect('/barbero/nueva-cita?error=' + encodeURIComponent(creationError.code === 11000 ? 'Ese horario ya está ocupado.' : 'No se pudo crear la cita.'));
   }
-  void notificarReserva(reserva._id, 'reservada');
+  void notificarReserva(reserva._id, 'reservada').catch((error) => console.error('Error al notificar reserva:', error.message));
   return res.redirect('/barbero');
 };
 
@@ -868,7 +868,7 @@ const barberoEstadoCita = async (req, res) => {
   if (req.body.estado === 'Cancelada') {
     if (dosHorasAntes(fechaClave(reserva.fecha), reserva.hora)) {
       await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
-      void notificarReserva(reserva._id, 'cancelada');
+      void notificarReserva(reserva._id, 'cancelada').catch((error) => console.error('Error al notificar reserva:', error.message));
     }
   } else if (['Pendiente', 'Confirmada', 'Completada'].includes(req.body.estado)) {
     await Reserva.findByIdAndUpdate(reserva._id, { estado: req.body.estado });

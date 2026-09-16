@@ -115,15 +115,15 @@
           <div class="flex items-center justify-between mt-3">
             <p class="text-on-surface-variant text-xs"><%= fmtFecha(notificacion.fecha, 'd/m/Y H:i') %></p>
              <% if (notificacion.reserva) { %><% if (notificacion.reserva.estado == 'Pendiente' && notificacion.tipo === 'suspension') { %><a
-              href="/editar-reserva/<%= notificacion.reserva.id %>"
+               href="/editar-reserva/<%= notificacion.reserva._id %>"
                class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-primary transition-opacity hover:opacity-90"><span
                  class="material-symbols-outlined text-sm">edit_calendar</span>Modificar cita</a><% } else if (notificacion.reserva.estado == 'Pendiente' && notificacion.tipo === 'reserva') { %><form
               method="post"
-              action="/confirmar-cita/<%= notificacion.reserva.id %>"><!-- csrf: auth JWT --><button
+               action="/confirmar-cita/<%= notificacion.reserva._id %>"><!-- csrf: auth JWT --><button
                 type="submit"
                 class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-primary transition-opacity hover:opacity-90"><span
                   class="material-symbols-outlined text-sm">event_available</span>Confirmar cita</button></form><% } %><% } %>
-            <% if (notificacion.reserva && notificacion.reserva.estado == 'Completada' && (calificaciones_reservas || []).indexOf(notificacion.reserva.id) === -1) { %>
+            <% if (notificacion.reserva && notificacion.reserva.estado == 'Completada' && (calificaciones_reservas || []).indexOf(String(notificacion.reserva._id)) === -1) { %>
             <a href="/perfil#citas"
               class="gold-gradient inline-flex text-on-primary font-bold py-1 px-4 rounded-md text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95">Calificar
               servicio</a>

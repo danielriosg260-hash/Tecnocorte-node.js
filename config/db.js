@@ -31,6 +31,7 @@ const connectDB = async () => {
   const connectionString = resolveConnectionString();
   try {
     await mongoose.connect(connectionString, {
+      dbName: process.env.MONGO_DB_NAME || 'tecnocorte',
       serverSelectionTimeoutMS: 10000,
       bufferTimeoutMS: 5000
     });

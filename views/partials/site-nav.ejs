@@ -29,7 +29,8 @@
       <% const panelLabel = logueado.rol === 'Admin' ? 'Panel admin' : 'Mi panel'; %>
       <a class="pill-text-action hidden sm:inline-flex" href="<%= panelUrl %>"><%= panelLabel %></a>
       <% } %>
-      <a class="pill-text-action hidden sm:inline-flex" href="/perfil">Perfil</a>
+      <% const profileUrl = logueado.rol === 'Admin' ? '/admin/perfil' : logueado.rol === 'Barbero' ? '/barbero/perfil' : '/perfil'; %>
+      <a class="pill-text-action hidden sm:inline-flex" href="<%= profileUrl %>">Perfil</a>
       <a class="pill-text-action hidden sm:inline-flex" href="/logout">Salir</a>
       <% } else { %>
       <a class="pill-text-action hidden sm:inline-flex" href="/login">Ingresar</a>

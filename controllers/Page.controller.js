@@ -930,6 +930,6 @@ module.exports = {
   adminCrearBloqueo, adminIngresos, adminMensajes, ayuda, actualizarCarrito, actualizarPerfil, actualizarReserva, barberoDashboard, barberoEstadoCita,
   barberoActualizarReserva, barberoEditarReserva, barberoGuardarCita, barberoNuevaCita, barberoPerfil, cambiarPassword, cancelarReserva, calificar, confirmarCita, confirmarReserva,
   subirObras, eliminarObra,
-  dashboard, editarReserva, eliminarCarrito, listarNotificaciones, listarNotificacionesBarbero, marcarNotificacionesLeidas, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
+  dashboard, editarReserva, eliminarCarrito, finalizarCompra, listarNotificaciones, listarNotificacionesBarbero, marcarNotificacionesLeidas, login, logout, peluquerias, pedidoExitoso, preConfirmar, perfil, reenviarVerificacionWeb, registro,
   reservarCita, restablecerPassword, renderLogin, renderReset, solicitarRecuperacion, servicios, tienda, verificarEmailWeb, verCarrito
 };

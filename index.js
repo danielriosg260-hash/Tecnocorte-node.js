@@ -4,6 +4,7 @@ const expressLayouts = require('express-ejs-layouts');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const { connectDB } = require('./config/db');
+const log = require('./services/log');
 const { cargarSesion } = require('./middleware/webAuth');
 
 // Carga las variables del archivo .env sin imprimir diagnósticos de dotenv en producción.
@@ -208,10 +209,12 @@ const startServer = async () => {
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
+      log.escribir(`Servidor iniciado en el puerto ${PORT}`);
     });
 
   } catch (error) {
     console.error(`No se pudo iniciar TecnoCorte: ${error.message}`);
+    log.escribir(`ERROR al iniciar: ${error.message}`);
     process.exitCode = 1;
   }
 };

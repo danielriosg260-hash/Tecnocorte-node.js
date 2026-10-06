@@ -314,7 +314,6 @@ const notificarReserva = async (reservaId, evento) => {
     const url = new URL(base);
     if (['http:', 'https:'].includes(url.protocol)) baseValida = base;
   } catch {
-    // El correo se puede enviar sin botón si APP_URL no está configurada correctamente.
   }
   const destinatarios = [
     reserva.cliente?.email ? { to: reserva.cliente.email, url: baseValida ? `${baseValida}/editar-reserva/${reserva._id}` : '' } : null,
@@ -346,7 +345,6 @@ const notificarSuspension = async (reservaId) => {
     const parsed = new URL(base);
     if (['http:', 'https:'].includes(parsed.protocol)) url = `${base}/editar-reserva/${reserva._id}`;
   } catch {
-    // No se añade un enlace si APP_URL no es válida.
   }
   await enviarCorreoBonito(transporter, {
     to: reserva.cliente.email,
@@ -369,7 +367,6 @@ const notificarCuentaCreada = async (usuario) => {
     const parsed = new URL(base);
     if (['http:', 'https:'].includes(parsed.protocol)) url = `${base}/login`;
   } catch {
-    // El correo se envía sin botón si APP_URL todavía no está configurada.
   }
   await enviarCorreoBonito(transporter, {
     to: usuario.email,

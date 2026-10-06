@@ -9,10 +9,6 @@ const camposPedido = (body, parcial = false) => {
   return campos;
 };
 
-// Controlador de Pedido: contiene las funciones que se usan para
-// crear, listar, actualizar y eliminar pedidos en la base de datos.
-
-// Crea un pedido nuevo. create() es el equivalente de insertOne en mongoose.
 const crear = async (req, res) => {
   try {
     const datos = camposPedido(req.body);
@@ -26,8 +22,6 @@ const crear = async (req, res) => {
   }
 };
 
-// Lista todos los pedidos. Con populate(), en vez de mostrar solo el id
-// del cliente, trae los datos completos del usuario que hizo el pedido.
 const listarTodos = async (req, res) => {
   try {
     const pedidos = await Pedido.find().populate('cliente', 'nombre apellido email telefono rol');
@@ -37,8 +31,6 @@ const listarTodos = async (req, res) => {
   }
 };
 
-// Busca un solo pedido por su id. findOne busca el primero que coincida
-// con la condición ({ _id: req.params.id }).
 const listarUno = async (req, res) => {
   try {
     const pedido = await Pedido.findOne({ _id: req.params.id }).populate('cliente', 'nombre apellido email telefono rol');
@@ -51,9 +43,6 @@ const listarUno = async (req, res) => {
   }
 };
 
-// Actualiza un pedido. findOneAndUpdate busca el pedido y le aplica
-// los cambios que vienen en req.body. { new: true } hace que responda
-// con el pedido ya actualizado.
 const actualizar = async (req, res) => {
   try {
     const pedido = await Pedido.findOneAndUpdate({ _id: req.params.id }, camposPedido(req.body, true), { new: true, runValidators: true });
@@ -66,7 +55,6 @@ const actualizar = async (req, res) => {
   }
 };
 
-// Elimina un pedido por su id. findOneAndDelete busca el pedido y lo elimina.
 const eliminar = async (req, res) => {
   try {
     const pedido = await Pedido.findOneAndDelete({ _id: req.params.id });

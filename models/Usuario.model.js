@@ -31,7 +31,6 @@ usuarioSchema.virtual('fecha_creacion').get(function () { return this.createdAt;
 usuarioSchema.virtual('fecha_actualizacion').get(function () { return this.updatedAt; });
 usuarioSchema.set('toJSON', { virtuals: true });
 
-// Antes de guardar, hashea la password si fue modificada
 usuarioSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   if (!this.isNew) this.tokenVersion = (this.tokenVersion || 0) + 1;
@@ -40,7 +39,6 @@ usuarioSchema.pre('save', async function (next) {
   next();
 });
 
-// Método para comparar passwords en el login
 usuarioSchema.methods.compararPassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };

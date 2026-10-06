@@ -18,10 +18,6 @@ const camposProducto = (body, parcial = false) => {
   return campos;
 };
 
-// Controlador de Producto: contiene las funciones que se usan para
-// crear, listar, actualizar y eliminar productos en la base de datos.
-
-// Crea un producto nuevo. create() es el equivalente de insertOne en mongoose.
 const crear = async (req, res) => {
   try {
     const producto = await Producto.create(camposProducto(req.body));
@@ -31,7 +27,6 @@ const crear = async (req, res) => {
   }
 };
 
-// Lista todos los productos que hay guardados.
 const listarTodos = async (req, res) => {
   try {
     const productos = await Producto.find();
@@ -41,8 +36,6 @@ const listarTodos = async (req, res) => {
   }
 };
 
-// Busca un solo producto por su id. findOne busca el primero que coincida
-// con la condición ({ _id: req.params.id }).
 const listarUno = async (req, res) => {
   try {
     const producto = await Producto.findOne({ _id: req.params.id });
@@ -55,9 +48,6 @@ const listarUno = async (req, res) => {
   }
 };
 
-// Actualiza un producto. findOneAndUpdate busca el producto y le aplica
-// los cambios que vienen en req.body. { new: true } hace que responda
-// con el producto ya actualizado.
 const actualizar = async (req, res) => {
   try {
     const producto = await Producto.findOneAndUpdate({ _id: req.params.id }, camposProducto(req.body, true), { new: true, runValidators: true });
@@ -70,7 +60,6 @@ const actualizar = async (req, res) => {
   }
 };
 
-// Elimina un producto por su id. findOneAndDelete busca el producto y lo elimina.
 const eliminar = async (req, res) => {
   try {
     if (await PedidoProducto.exists({ producto: req.params.id })) return res.status(409).json({ mensaje: 'No se puede eliminar un producto incluido en pedidos' });

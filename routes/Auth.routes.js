@@ -10,16 +10,13 @@ router.use((req, res, next) => {
   next();
 });
 
-// Registro de usuario nuevo
 router.post('/registro', authController.registro);
 router.post('/verificar-email', limitarVerificacion, authController.verificarEmail);
 
-// Inicio de sesión
 router.post('/login', limitarLogin, authController.login);
 
 router.post('/logout', authController.logout);
 
-// Ver perfil (protegida con token)
 router.get('/perfil', verificarToken, authController.perfil);
 
 module.exports = router;

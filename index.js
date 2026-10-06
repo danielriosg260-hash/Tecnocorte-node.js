@@ -7,7 +7,6 @@ const { connectDB } = require('./config/db');
 const log = require('./services/log');
 const { cargarSesion } = require('./middleware/webAuth');
 
-// Carga las variables del archivo .env sin imprimir diagnósticos de dotenv en producción.
 dotenv.config({ quiet: true });
 
 if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
@@ -22,12 +21,9 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 
-// Middlewares: funciones que se ejecutan antes de llegar a las rutas.
-// express.json() permite recibir datos en formato JSON en el body de las peticiones.
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 
-// Vistas con EJS: motor de plantillas, carpeta de vistas y archivos estáticos (css, imagenes, js).
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
@@ -47,7 +43,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Helpers disponibles en todas las plantillas EJS.
 app.locals.fmtMoneda = (valor) => {
   const n = Number(valor) || 0;
   return `$${n.toLocaleString('es-CO')}`;
@@ -92,7 +87,6 @@ app.locals.cantidad = 0;
 app.locals.notificaciones_no_leidas = 0;
 app.locals.mensajes_no_leidos = 0;
 
-// Definir defaults para variables de plantilla y evitar errores "not defined".
 app.use((req, res, next) => {
   res.locals.logueado = null;
   res.locals.usuario_actual = { foto: '' };
@@ -177,10 +171,8 @@ app.use((req, res, next) => {
 
 app.use(cargarSesion);
 
-// morgan muestra en la consola cada petición que llega (solo en desarrollo).
 app.use(morgan('dev'));
 
-// Rutas: se registran las rutas de cada modelo bajo su dirección.
 app.use('/api/auth', require('./routes/Auth.routes'));
 app.use('/api/usuarios', require('./routes/Usuario.routes'));
 app.use('/api/productos', require('./routes/Producto.routes'));
@@ -189,7 +181,6 @@ app.use('/api/pedidos', require('./routes/Pedido.routes'));
 app.use('/api/reservas', require('./routes/Reserva.routes'));
 app.use('/api/pedidos-producto', require('./routes/PedidoProducto.routes'));
 
-// Páginas EJS (vistas) del sitio web.
 app.use('/', require('./routes/Page.routes'));
 
 app.use((error, req, res, next) => {
@@ -199,8 +190,6 @@ app.use((error, req, res, next) => {
   return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
 });
 
-// El servidor solo acepta tráfico después de validar la conexión con MongoDB.
-// El servidor solo acepta tráfico después de validar la conexión con MongoDB.
 const PORT = process.env.PORT || 3026;
 
 const startServer = async () => {

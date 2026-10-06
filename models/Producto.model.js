@@ -1,8 +1,5 @@
 const mongoose = require('mongoose');
 
-// Modelo de Producto que define la estructura de los datos de los productos,
-// incluyendo su información principal, disponibilidad y stock.
-// También registra automáticamente las fechas de creación y actualización.
 const productoSchema = new mongoose.Schema({
   nombre: { type: String, required: true, trim: true, maxlength: 160 },
   descripcion: { type: String, maxlength: 2000 },

@@ -59,10 +59,6 @@ const filtroPropietario = (usuario) => usuario.rol === 'Admin'
   ? {}
   : usuario.rol === 'Barbero' ? { peluquero: usuario._id } : { cliente: usuario._id };
 
-// Controlador de Reserva: contiene las funciones que se usan para
-// crear, listar, actualizar y eliminar reservas en la base de datos.
-
-// Crea una reserva nueva y envía correo de confirmación al cliente.
 const crear = async (req, res) => {
   try {
     const cliente = req.usuario.rol === 'Cliente' ? req.usuario._id : req.body.cliente;
@@ -82,7 +78,6 @@ const crear = async (req, res) => {
       estado
     });
 
-    // Busca datos del cliente y la peluquería para el correo
     const clienteUsuario = await Usuario.findById(cliente);
     const peluqueria = await Peluqueria.findById(req.body.peluqueria);
 
@@ -113,8 +108,6 @@ const crear = async (req, res) => {
   }
 };
 
-// Lista todas las reservas. Con populate(), en vez de mostrar solo los ids
-// del cliente y de la peluquería, trae sus datos completos.
 const listarTodos = async (req, res) => {
   try {
     const filtro = filtroPropietario(req.usuario);
@@ -125,8 +118,6 @@ const listarTodos = async (req, res) => {
   }
 };
 
-// Busca una sola reserva por su id. findOne busca la primera que coincida
-// con la condición ({ _id: req.params.id }).
 const listarUno = async (req, res) => {
   try {
     const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) }).populate('cliente', 'nombre apellido email telefono rol').populate('peluqueria', 'nombre ubicacion telefono').populate('peluquero', 'nombre apellido email telefono rol');
@@ -139,9 +130,6 @@ const listarUno = async (req, res) => {
   }
 };
 
-// Actualiza una reserva. findOneAndUpdate busca la reserva y le aplica
-// los cambios que vienen en req.body. { new: true } hace que responda
-// con la reserva ya actualizada.
 const actualizar = async (req, res) => {
   try {
     const reservaActual = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
@@ -176,7 +164,6 @@ const actualizar = async (req, res) => {
   }
 };
 
-// Elimina una reserva por su id. findOneAndDelete busca la reserva y la elimina.
 const eliminar = async (req, res) => {
   try {
     const reservaActual = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });

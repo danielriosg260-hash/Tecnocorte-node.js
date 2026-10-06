@@ -31,6 +31,7 @@ const CATEGORIAS = [['cabello', 'Cabello'], ['barba', 'Barba'], ['accesorios', '
 const ESTADOS_RESERVA = [['Pendiente', 'Pendiente'], ['Confirmada', 'Confirmada'], ['Completada', 'Completada'], ['Cancelada', 'Cancelada']];
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+const { claveFecha: fechaClave, minutosDeHora: minutosHora, fechaLocal } = require('../utils/fechas');
 const esId = (value) => mongoose.isValidObjectId(value);
 const nextUrl = (value) => typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/';
 const dashboardUrl = (usuario) => usuario?.rol === 'Admin' ? '/admin' : usuario?.rol === 'Barbero' ? '/barbero' : '/perfil';
@@ -40,11 +41,6 @@ const plain = (doc) => {
   value.id = String(value._id || value.id);
   if (value.peluqueria_id) value.peluqueria_id = String(value.peluqueria_id);
   return value;
-};
-const fechaClave = (valor) => {
-  const fecha = new Date(valor);
-  if (Number.isNaN(fecha.getTime())) return '';
-  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
 };
 const inicioDelDia = () => {
   const fecha = new Date();
@@ -257,16 +253,6 @@ const reservarCita = async (req, res) => {
 };
 
 const findServicio = (nombre) => SERVICIOS.find((servicio) => servicio.nombre === nombre);
-const minutosHora = (value) => {
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''))) return -1;
-  const [hours, minutes] = String(value).split(':').map(Number);
-  return hours * 60 + minutes;
-};
-const fechaLocal = (fecha, hora = '00:00') => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || minutosHora(hora) < 0) return null;
-  const value = new Date(`${fecha}T${hora}:00`);
-  return Number.isNaN(value.getTime()) || fechaClave(value) !== fecha ? null : value;
-};
 const dosHorasAntes = (fecha, hora) => {
   const inicio = fechaLocal(fecha, hora);
   return inicio && inicio.getTime() - Date.now() >= 2 * 60 * 60 * 1000;

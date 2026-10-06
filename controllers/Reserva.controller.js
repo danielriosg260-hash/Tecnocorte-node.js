@@ -5,23 +5,12 @@ const transporter = require('../config/email');
 const { enviarCorreoBonito, escapeHtml } = require('../config/emailTemplate');
 
 const escaparHtml = escapeHtml;
+const { esFecha: fechaValida, minutosDeHora: minutosHora, inicioDelDiaDate: fechaInicio } = require('../utils/fechas');
 const ESTADOS_ACTIVOS = ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'];
 const ESTADOS_VALIDOS = [...ESTADOS_ACTIVOS, 'Cancelada'];
 const esId = (value) => require('mongoose').isValidObjectId(value);
 
-const fechaValida = (value) => {
-  if (value instanceof Date) return !Number.isNaN(value.getTime());
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const fecha = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === value;
-};
 
-const fechaInicio = (value) => value instanceof Date ? new Date(value) : new Date(`${value}T00:00:00`);
-const minutosHora = (value) => {
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) return -1;
-  const [hora, minuto] = value.split(':').map(Number);
-  return hora * 60 + minuto;
-};
 
 const validarReserva = async ({ cliente, peluqueria, peluquero, fecha, hora, servicio, minutos, estado, excluir }) => {
   if (![cliente, peluqueria, peluquero].every(esId)) return 'Los identificadores de la reserva no son válidos.';

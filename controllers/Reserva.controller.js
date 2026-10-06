@@ -4,30 +4,36 @@ const Peluqueria = require('../models/Peluqueria.model');
 const transporter = require('../config/email');
 const { enviarCorreoBonito, escapeHtml } = require('../config/emailTemplate');
 
-const escaparHtml = escapeHtml;
 const { esFecha: fechaValida, minutosDeHora: minutosHora, inicioDelDiaDate: fechaInicio } = require('../utils/fechas');
+
 const ESTADOS_ACTIVOS = ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'];
 const ESTADOS_VALIDOS = [...ESTADOS_ACTIVOS, 'Cancelada'];
-const esId = (value) => require('mongoose').isValidObjectId(value);
 
+function esIdValido(id) {
+  return require('mongoose').isValidObjectId(id);
+}
 
-
-const validarReserva = async ({ cliente, peluqueria, peluquero, fecha, hora, servicio, minutos, estado, excluir }) => {
-  if (![cliente, peluqueria, peluquero].every(esId)) return 'Los identificadores de la reserva no son válidos.';
+async function validarReserva({ cliente, peluqueria, peluquero, fecha, hora, servicio, minutos, estado, excluir }) {
+  if (!esIdValido(cliente) || !esIdValido(peluqueria) || !esIdValido(peluquero)) {
+    return 'Los identificadores de la reserva no son válidos.';
+  }
   const inicio = minutosHora(hora);
   const duracion = Number(minutos);
-  if (inicio < 0 || !Number.isInteger(duracion) || duracion < 15 || duracion > 480) return 'La hora o duración de la reserva no son válidas.';
+  if (inicio < 0 || !Number.isInteger(duracion) || duracion < 15 || duracion > 480) {
+    return 'La hora o duración de la reserva no son válidas.';
+  }
   if (!fechaValida(fecha)) return 'La fecha debe ser válida.';
   if (typeof servicio !== 'string' || !servicio.trim() || servicio.length > 120) return 'El servicio no es válido.';
+
   const fechaTexto = fecha instanceof Date ? fecha.toISOString().slice(0, 10) : fecha;
-  if (new Date(`${fechaTexto}T${hora}:00`) <= new Date()) return 'La fecha y hora deben estar en el futuro.';
+  const fechaHora = new Date(fechaTexto + 'T' + hora + ':00');
+  if (fechaHora <= new Date()) return 'La fecha y hora deben estar en el futuro.';
+
   if (estado !== undefined && !ESTADOS_VALIDOS.includes(estado)) return 'El estado de la reserva no es válido.';
 
-  const [clienteDoc, peluqueriaDoc, peluqueroDoc] = await Promise.all([
-    Usuario.findOne({ _id: cliente, rol: 'Cliente', activo: { $ne: false } }).select('_id email nombre'),
-    Peluqueria.findById(peluqueria).select('_id nombre'),
-    Usuario.findOne({ _id: peluquero, rol: 'Barbero', activo: { $ne: false }, peluqueria_id: peluqueria }).select('_id email nombre')
-  ]);
+  const clienteDoc = await Usuario.findOne({ _id: cliente, rol: 'Cliente', activo: { $ne: false } }).select('_id email nombre');
+  const peluqueriaDoc = await Peluqueria.findById(peluqueria).select('_id nombre');
+  const peluqueroDoc = await Usuario.findOne({ _id: peluquero, rol: 'Barbero', activo: { $ne: false }, peluqueria_id: peluqueria }).select('_id email nombre');
   if (!clienteDoc) return 'El cliente no existe o no está disponible.';
   if (!peluqueriaDoc) return 'La peluquería no existe.';
   if (!peluqueroDoc) return 'El barbero no está disponible para esta peluquería.';
@@ -35,18 +41,27 @@ const validarReserva = async ({ cliente, peluqueria, peluquero, fecha, hora, ser
   const inicioFecha = fechaInicio(fecha);
   const finFecha = new Date(inicioFecha);
   finFecha.setDate(finFecha.getDate() + 1);
-  const reservas = await Reserva.find({ peluquero, fecha: { $gte: inicioFecha, $lt: finFecha }, estado: { $in: ESTADOS_ACTIVOS }, ...(excluir ? { _id: { $ne: excluir } } : {}) }).select('hora minutos');
-  const fin = inicio + duracion;
-  if (reservas.some((reserva) => {
-    const reservaInicio = minutosHora(reserva.hora);
-    return reservaInicio >= 0 && inicio < reservaInicio + (reserva.minutos || 30) && fin > reservaInicio;
-  })) return 'Ese horario ya está ocupado.';
-  return null;
-};
 
-const filtroPropietario = (usuario) => usuario.rol === 'Admin'
-  ? {}
-  : usuario.rol === 'Barbero' ? { peluquero: usuario._id } : { cliente: usuario._id };
+  const filtro = { peluquero, fecha: { $gte: inicioFecha, $lt: finFecha }, estado: { $in: ESTADOS_ACTIVOS } };
+  if (excluir) filtro._id = { $ne: excluir };
+  const reservas = await Reserva.find(filtro).select('hora minutos');
+
+  const fin = inicio + duracion;
+  for (const reserva of reservas) {
+    const reservaInicio = minutosHora(reserva.hora);
+    const reservaFin = reservaInicio + (reserva.minutos || 30);
+    if (reservaInicio >= 0 && inicio < reservaFin && fin > reservaInicio) {
+      return 'Ese horario ya está ocupado.';
+    }
+  }
+  return null;
+}
+
+function filtroPropietario(usuario) {
+  if (usuario.rol === 'Admin') return {};
+  if (usuario.rol === 'Barbero') return { peluquero: usuario._id };
+  return { cliente: usuario._id };
+}
 
 const crear = async (req, res) => {
   try {
@@ -83,7 +98,7 @@ const crear = async (req, res) => {
           title: 'Tu cita está reservada',
           preheader: 'Hemos guardado tu cita en TecnoCorte.',
           greeting: `¡Hola ${clienteUsuario.nombre}!`,
-          content: `<p>Tu cita ha sido reservada exitosamente.</p><p><strong>Peluquería:</strong> ${escaparHtml(nombrePeluqueria)}<br><strong>Fecha:</strong> ${escaparHtml(fechaFormateada)}<br><strong>Hora:</strong> ${escaparHtml(reserva.hora)}<br><strong>Servicio:</strong> ${escaparHtml(reserva.servicio || 'No especificado')}<br><strong>Estado:</strong> ${escaparHtml(reserva.estado)}</p><p>Te esperamos en TecnoCorte.</p>`,
+          content: `<p>Tu cita ha sido reservada exitosamente.</p><p><strong>Peluquería:</strong> ${escapeHtml(nombrePeluqueria)}<br><strong>Fecha:</strong> ${escapeHtml(fechaFormateada)}<br><strong>Hora:</strong> ${escapeHtml(reserva.hora)}<br><strong>Servicio:</strong> ${escapeHtml(reserva.servicio || 'No especificado')}<br><strong>Estado:</strong> ${escapeHtml(reserva.estado)}</p><p>Te esperamos en TecnoCorte.</p>`,
           text: `Tu cita fue reservada en ${nombrePeluqueria} el ${fechaFormateada} a las ${reserva.hora}.`
         });
       } catch (emailError) {

@@ -34,7 +34,11 @@ const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', '
 const { claveFecha: fechaClave, minutosDeHora: minutosHora, fechaLocal } = require('../utils/fechas');
 const esId = (value) => mongoose.isValidObjectId(value);
 const nextUrl = (value) => typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/';
-const dashboardUrl = (usuario) => usuario?.rol === 'Admin' ? '/admin' : usuario?.rol === 'Barbero' ? '/barbero' : '/perfil';
+function dashboardUrl(usuario) {
+  if (usuario?.rol === 'Admin') return '/admin';
+  if (usuario?.rol === 'Barbero') return '/barbero';
+  return '/perfil';
+}
 const plain = (doc) => {
   if (!doc) return null;
   const value = typeof doc.toObject === 'function' ? doc.toObject({ virtuals: true }) : { ...doc };
@@ -48,7 +52,10 @@ const inicioDelDia = () => {
   return fecha;
 };
 const usuarioView = (doc) => plain(doc);
-const errorMessage = (error) => error?.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo guardar la información.';
+function errorMessage(error) {
+  if (error?.code === 11000) return 'El correo ya está registrado.';
+  return 'No se pudo guardar la información.';
+}
 
 const avisarIntentoCuentaSuspendida = async (usuario) => {
   const administradores = await Usuario.find({ rol: 'Admin', activo: { $ne: false } }).select('_id');

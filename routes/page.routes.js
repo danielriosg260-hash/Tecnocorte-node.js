@@ -3,11 +3,11 @@ const multer = require('multer');
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
-const pageController = require('../controllers/Page.controller');
-const rateLimitLogin = require('../middleware/rateLimit');
+const pageController = require('../controllers/page.controller');
+const rateLimitLogin = require('../middleware/ratelimit');
 const { limitarVerificacion, limitarReenvio, limitarRecuperacion } = rateLimitLogin;
-const { exigirRol, exigirSesion, protegerCSRF } = require('../middleware/webAuth');
-const asyncHandler = require('../middleware/asyncHandler');
+const { exigirRol, exigirSesion, protegerCSRF } = require('../middleware/webauth');
+const asyncHandler = require('../middleware/asynchandler');
 
 const router = express.Router();
 router.use(protegerCSRF);

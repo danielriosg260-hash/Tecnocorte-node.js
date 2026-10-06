@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const peluqueriaController = require('../controllers/Peluqueria.controller');
+const peluqueriaController = require('../controllers/peluqueria.controller');
 const verificarToken = require('../middleware/auth');
 const exigirRol = require('../middleware/roles');
 

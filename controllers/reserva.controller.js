@@ -1,8 +1,8 @@
-const Reserva = require('../models/Reserva.model');
-const Usuario = require('../models/Usuario.model');
-const Peluqueria = require('../models/Peluqueria.model');
+const Reserva = require('../models/reserva.model');
+const Usuario = require('../models/usuario.model');
+const Peluqueria = require('../models/peluqueria.model');
 const transporter = require('../config/email');
-const { enviarCorreoBonito, escapeHtml } = require('../config/emailTemplate');
+const { enviarCorreoBonito, escapeHtml } = require('../config/emailtemplate');
 
 const { esFecha: fechaValida, minutosDeHora: minutosHora, inicioDelDiaDate: fechaInicio } = require('../utils/fechas');
 

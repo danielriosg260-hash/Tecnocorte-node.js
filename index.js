@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const { connectDB } = require('./config/db');
 const log = require('./services/log');
-const { cargarSesion } = require('./middleware/webAuth');
+const { cargarSesion } = require('./middleware/webauth');
 
 dotenv.config({ quiet: true });
 
@@ -173,15 +173,15 @@ app.use(cargarSesion);
 
 app.use(morgan('dev'));
 
-app.use('/api/auth', require('./routes/Auth.routes'));
-app.use('/api/usuarios', require('./routes/Usuario.routes'));
-app.use('/api/productos', require('./routes/Producto.routes'));
-app.use('/api/peluquerias', require('./routes/Peluqueria.routes'));
-app.use('/api/pedidos', require('./routes/Pedido.routes'));
-app.use('/api/reservas', require('./routes/Reserva.routes'));
-app.use('/api/pedidos-producto', require('./routes/PedidoProducto.routes'));
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/usuarios', require('./routes/usuario.routes'));
+app.use('/api/productos', require('./routes/producto.routes'));
+app.use('/api/peluquerias', require('./routes/peluqueria.routes'));
+app.use('/api/pedidos', require('./routes/pedido.routes'));
+app.use('/api/reservas', require('./routes/reserva.routes'));
+app.use('/api/pedidos-producto', require('./routes/pedidoproducto.routes'));
 
-app.use('/', require('./routes/Page.routes'));
+app.use('/', require('./routes/page.routes'));
 
 app.use((error, req, res, next) => {
   console.error('Error no controlado:', error.message);

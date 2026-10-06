@@ -1,5 +1,5 @@
-const Producto = require('../models/Producto.model');
-const PedidoProducto = require('../models/PedidoProducto.model');
+const Producto = require('../models/producto.model');
+const PedidoProducto = require('../models/pedidoproducto.model');
 
 const camposProducto = (body, parcial = false) => {
   const campos = {};

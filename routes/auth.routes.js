@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/Auth.controller');
+const authController = require('../controllers/auth.controller');
 const verificarToken = require('../middleware/auth');
-const limitarLogin = require('../middleware/rateLimit');
+const limitarLogin = require('../middleware/ratelimit');
 const { limitarVerificacion } = limitarLogin;
 
 router.use((req, res, next) => {

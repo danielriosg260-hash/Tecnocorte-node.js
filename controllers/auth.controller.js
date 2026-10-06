@@ -1,11 +1,11 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const Usuario = require('../models/Usuario.model');
-const Notificacion = require('../models/Notificacion.model');
-const Ingreso = require('../models/Ingreso.model');
+const Usuario = require('../models/usuario.model');
+const Notificacion = require('../models/notificacion.model');
+const Ingreso = require('../models/ingreso.model');
 const transporter = require('../config/email');
-const { enviarCorreoBonito } = require('../config/emailTemplate');
-const { guardarCodigo, verificarCodigo } = require('../config/emailVerification');
+const { enviarCorreoBonito } = require('../config/emailtemplate');
+const { guardarCodigo, verificarCodigo } = require('../config/emailverification');
 const { clearSessionCookie, setSessionCookie } = require('../config/session');
 
 const HASH_FALSO = '$2b$12$C6UzMDM.H6dfI/f/IKcEe.VbZV5hQ9Qf6yUQxV0n5h8z0fP1w8W8K';

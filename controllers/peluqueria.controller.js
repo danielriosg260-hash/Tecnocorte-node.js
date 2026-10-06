@@ -1,8 +1,8 @@
-const Peluqueria = require('../models/Peluqueria.model');
-const Reserva = require('../models/Reserva.model');
-const Usuario = require('../models/Usuario.model');
-const Horario = require('../models/Horario.model');
-const Bloqueo = require('../models/Bloqueo.model');
+const Peluqueria = require('../models/peluqueria.model');
+const Reserva = require('../models/reserva.model');
+const Usuario = require('../models/usuario.model');
+const Horario = require('../models/horario.model');
+const Bloqueo = require('../models/bloqueo.model');
 
 const camposPeluqueria = (body) => ({
   nombre: body.nombre,

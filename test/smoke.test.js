@@ -22,24 +22,24 @@ test('todas las plantillas EJS compilan', () => {
 
 test('las rutas y middleware principales cargan sin errores', () => {
   assert.doesNotThrow(() => {
-    require('../routes/Page.routes');
-    require('../routes/Auth.routes');
+    require('../routes/page.routes');
+    require('../routes/auth.routes');
     require('../middleware/auth');
-    require('../middleware/webAuth');
+    require('../middleware/webauth');
   });
 });
 
 test('el modelo de usuario no expone la contraseña por defecto', () => {
-  const Usuario = require('../models/Usuario.model');
+  const Usuario = require('../models/usuario.model');
   assert.equal(Usuario.schema.path('password').options.select, false);
   assert.equal(Usuario.schema.path('activo').options.default, true);
 });
 
 test('los modelos aplican límites básicos de negocio', () => {
-  const Reserva = require('../models/Reserva.model');
-  const Producto = require('../models/Producto.model');
-  const Pedido = require('../models/Pedido.model');
-  const PedidoProducto = require('../models/PedidoProducto.model');
+  const Reserva = require('../models/reserva.model');
+  const Producto = require('../models/producto.model');
+  const Pedido = require('../models/pedido.model');
+  const PedidoProducto = require('../models/pedidoproducto.model');
 
   assert.ok(Reserva.schema.path('hora').options.match.test('23:59'));
   assert.deepEqual(Reserva.schema.path('estado').options.enum, ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar']);

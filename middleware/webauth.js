@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const Usuario = require('../models/Usuario.model');
-const Notificacion = require('../models/Notificacion.model');
+const Usuario = require('../models/usuario.model');
+const Notificacion = require('../models/notificacion.model');
 const { getSessionToken, readCart } = require('../config/session');
 
 const cargarSesion = async (req, res, next) => {

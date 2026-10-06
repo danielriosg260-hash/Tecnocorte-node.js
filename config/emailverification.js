@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const transporter = require('./email');
-const { enviarCorreoBonito } = require('./emailTemplate');
+const { enviarCorreoBonito } = require('./emailtemplate');
 
 const crearCodigo = () => String(crypto.randomInt(100000, 1000000));
 const hashCodigo = (codigo) => crypto.createHash('sha256').update(String(codigo)).digest('hex');

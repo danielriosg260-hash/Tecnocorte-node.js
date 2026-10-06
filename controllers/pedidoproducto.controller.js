@@ -1,4 +1,4 @@
-const PedidoProducto = require('../models/PedidoProducto.model');
+const PedidoProducto = require('../models/pedidoproducto.model');
 const mongoose = require('mongoose');
 
 const camposLinea = (body, parcial = false) => {

@@ -1,6 +1,6 @@
-const Usuario = require('../models/Usuario.model');
-const Reserva = require('../models/Reserva.model');
-const Pedido = require('../models/Pedido.model');
+const Usuario = require('../models/usuario.model');
+const Reserva = require('../models/reserva.model');
+const Pedido = require('../models/pedido.model');
 
 const camposPublicos = (usuario) => ({
   id: usuario._id,

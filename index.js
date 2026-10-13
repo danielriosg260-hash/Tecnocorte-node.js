@@ -190,7 +190,7 @@ app.use((error, req, res, next) => {
   return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
 });
 
-const PORT = process.env.PORT || 3026;
+const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {

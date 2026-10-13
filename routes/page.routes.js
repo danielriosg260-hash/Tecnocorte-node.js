@@ -14,19 +14,18 @@ router.use(protegerCSRF);
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const imageExtensions = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${imageExtensions[file.mimetype]}`)
-  }),
-  fileFilter: (req, file, cb) => cb(null, Boolean(imageExtensions[file.mimetype])),
-  limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${imageExtensions[file.mimetype]}`)
 });
+const fileFilter = (req, file, cb) => cb(null, Boolean(imageExtensions[file.mimetype]));
+const upload = multer({ storage, fileFilter, limits: { fileSize: 2 * 1024 * 1024, files: 1 } });
+const uploadMultiple = multer({ storage, fileFilter, limits: { fileSize: 2 * 1024 * 1024, files: 6 } });
 const uploadImage = (req, res, next) => upload.single('foto')(req, res, (error) => {
   if (error) return res.status(400).send('La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
   next();
 });
-const uploadPortfolio = (req, res, next) => upload.array('obras', 6)(req, res, (error) => {
+const uploadPortfolio = (req, res, next) => uploadMultiple.array('obras', 6)(req, res, (error) => {
   if (error) return res.status(400).send('Puedes subir hasta 6 imágenes JPG, PNG o WebP de menos de 2 MB cada una.');
   next();
 });

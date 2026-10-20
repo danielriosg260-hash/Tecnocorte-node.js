@@ -90,30 +90,145 @@ async function datosFormularioCita() {
 
 // ---- Reportes exportables ----
 
-/** Genera un reporte HTML que Excel abre como hoja de cálculo. */
-function respuestaExcel(res, titulo, subtitulo, encabezados, filas, nombreArchivo) {
+/**
+ * Genera un reporte con la identidad visual de TecnoCorte que Excel abre
+ * como hoja de cálculo (HTML con estilos + BOM para UTF-8).
+ *
+ * @param {object} res Respuesta de Express.
+ * @param {string} titulo Título grande del reporte.
+ * @param {string} subtitulo Descripción corta del reporte.
+ * @param {string[]} encabezados Nombres de las columnas.
+ * @param {Array<Array<any>>} filas Datos de cada fila.
+ * @param {string} nombreArchivo Nombre del archivo descargado (.xls).
+ * @param {{ totales?: Array<any>, resumen?: string, anchos?: string[] }} [opciones]
+ * Opciones visuales y fila opcional de totales al pie.
+ */
+function respuestaExcel(res, titulo, subtitulo, encabezados, filas, nombreArchivo, opciones = {}) {
   const escapar = (valor) => String(valor == null ? '' : valor)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  const cabecera = encabezados.map((item) => `<th>${escapar(item)}</th>`).join('');
+  const claseCelda = (valor, encabezado) => {
+    const clases = [];
+    const texto = String(valor == null ? '' : valor).toLowerCase();
+    const columna = String(encabezado || '').toLowerCase();
+
+    if (typeof valor === 'number') clases.push('number');
+    if (typeof valor === 'number' && /(total|precio|ingreso|valor)/.test(columna)) {
+      clases.push('currency');
+    }
+    if (/\b(completada|confirmada|entregado|listo|sí|si|pagado)\b/.test(texto)) {
+      clases.push('positive');
+    } else if (/\b(cancelada|cancelado|no|ignorado)\b/.test(texto)) {
+      clases.push('negative');
+    } else if (/\b(pendiente|reprogramar|revisado)\b/.test(texto)) {
+      clases.push('warning');
+    }
+
+    return clases.join(' ');
+  };
+
+  const celda = (valor, encabezado, esTotal = false) => {
+    const clase = claseCelda(valor, encabezado);
+    return `<td class="${esTotal ? `total-cell ${clase}` : clase}">${escapar(valor)}</td>`;
+  };
+
+  const cabecera = encabezados
+    .map((item) => `<th scope="col">${escapar(item)}</th>`)
+    .join('');
+  const anchos = encabezados
+    .map((_, indice) => `<col style="width:${escapar(opciones.anchos?.[indice] || '')}">`)
+    .join('');
+
   const cuerpo = filas.length
-    ? filas.map((fila) => `<tr>${fila.map((valor) => `<td>${escapar(valor)}</td>`).join('')}</tr>`).join('')
+    ? filas.map((fila, i) => {
+        const celdas = fila
+          .map((valor, indice) => celda(valor, encabezados[indice]))
+          .join('');
+        // Las filas pares llevan un tono crema para facilitar la lectura.
+        return i % 2 ? `<tr class="alt">${celdas}</tr>` : `<tr>${celdas}</tr>`;
+      }).join('')
     : `<tr><td colspan="${encabezados.length}" class="empty">No hay registros para mostrar</td></tr>`;
 
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;color:#27231b;background:#fff;padding:24px}
-    .report{max-width:1400px;margin:auto}
-    h1{margin:0;color:#6f520d;font-size:24px}.subtitle{color:#777;margin:6px 0 20px;font-size:13px}
-    .meta{background:#f6edcf;border:1px solid #d6ad42;padding:10px 14px;margin-bottom:18px;font-size:12px}
-    table{border-collapse:collapse;width:100%;font-size:12px}
-    th{background:#6f520d;color:#fff;padding:11px 9px;text-align:left;white-space:nowrap}
-    td{border:1px solid #ded8c9;padding:9px;background:#fff}tr:nth-child(even) td{background:#faf7ef}
-    .empty{text-align:center;color:#777;padding:22px}
-  </style></head><body><div class="report"><h1>${escapar(titulo)}</h1><p class="subtitle">${escapar(subtitulo)}</p>
-  <div class="meta">Generado por TecnoCorte · Registros: <strong>${filas.length}</strong></div>
-  <table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table></div></body></html>`;
+  // Fila de totales opcional (por ejemplo, la suma de los pedidos).
+  const pie = opciones.totales
+    ? `<tr class="totals">${opciones.totales
+        .map((valor, indice) => celda(valor, encabezados[indice], true))
+        .join('')}</tr>`
+    : '';
+
+  // El logo se incrusta en base64 para que el reporte luzca con la marca
+  // incluso si se abre en otro equipo sin acceso al servidor.
+  let logoHtml = '';
+  try {
+    const rutaLogo = path.join(__dirname, '..', 'public', 'images', 'Logo.png');
+    if (fs.existsSync(rutaLogo)) {
+      const base64 = fs.readFileSync(rutaLogo).toString('base64');
+      logoHtml = `<img src="data:image/png;base64,${base64}" alt="TecnoCorte" />`;
+    }
+  } catch (error) {
+    // Un logo que no carga no debe impedir generar el reporte.
+  }
+
+  const fechaGeneracion = new Date().toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    dateStyle: 'long',
+    timeStyle: 'short'
+  });
+
+  const resumen = opciones.resumen ? `<span> ${escapar(opciones.resumen)}</span>` : '';
+
+  const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">
+    <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+    <x:Name>${escapar(titulo).slice(0, 31)}</x:Name><x:WorksheetOptions>
+    <x:DisplayGridlines>0</x:DisplayGridlines><x:FreezePanes/><x:FrozenNoSplit/>
+    <x:SplitHorizontal>6</x:SplitHorizontal><x:TopRowBottomPane>6</x:TopRowBottomPane>
+    <x:Print><x:ValidPrinterInfo/><x:PaperSizeIndex>9</x:PaperSizeIndex>
+    <x:FitToPage/></x:Print></x:WorksheetOptions></x:ExcelWorksheet>
+    </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><style>
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#27231b;background:#fff;padding:0;margin:0}
+    .sheet{max-width:1400px;margin:auto;padding:28px}
+    .brand{width:100%;border-collapse:collapse;border-bottom:3px solid #d6ad42;padding-bottom:16px;margin-bottom:22px}
+    .brand td{border:0;background:#fff;padding:0;vertical-align:middle}
+    .brand .logo-cell{width:66px}
+    .brand img{display:block;width:52px;height:52px;border-radius:12px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+    .brand .name{font-size:15px;font-weight:700;letter-spacing:3px;color:#6f520d;text-transform:uppercase;margin:0}
+    .brand .tag{font-size:11px;color:#8a8378;margin:2px 0 0}
+    h1{margin:0;color:#27231b;font-size:26px;line-height:1.2}
+    .subtitle{color:#77706a;margin:6px 0 20px;font-size:13px}
+    .meta{background:linear-gradient(120deg,#f3d98a 0%,#d6ad42 45%,#a9791d 100%);color:#2a1f07;
+      border-radius:12px;padding:12px 18px;margin:0 0 22px;font-size:12.5px;font-weight:600}
+    .meta span{display:inline-block;white-space:nowrap;margin-right:30px}
+    table.report-table{border-collapse:collapse;width:100%;font-size:12.5px;table-layout:fixed;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    thead{display:table-header-group}
+    th{background:#6f520d;color:#fff;padding:12px 10px;text-align:left;white-space:nowrap;
+      font-size:11px;letter-spacing:.6px;text-transform:uppercase;border-right:1px solid #85641f}
+    th:last-child{border-right:none}
+    td{border:1px solid #e6dfcc;padding:10px;background:#fff}
+    tr.alt td{background:#faf6ea}
+    td.number{text-align:right;white-space:nowrap}
+    td.currency{mso-number-format:'$ #,##0';font-weight:600}
+    td.positive{background:#edf8f0;color:#14663c;font-weight:700}
+    td.warning{background:#fff8e5;color:#735c00;font-weight:700}
+    td.negative{background:#fff0ed;color:#a52b21;font-weight:700}
+    .totals td{background:#f3ead0;font-weight:700;border-top:2px solid #d6ad42;color:#4f3908}
+    .totals td.number{text-align:right}
+    .empty{text-align:center;color:#77706a;padding:26px;font-style:italic}
+    .foot{margin-top:14px;color:#8a8378;font-size:11px;text-align:right}
+  </style></head><body><div class="sheet">
+    <table class="brand"><tr><td class="logo-cell">${logoHtml}</td><td><p class="name">TecnoCorte</p><p class="tag">Sistema de gestión de peluquerías</p></td></tr></table>
+    <h1>${escapar(titulo)}</h1>
+    <p class="subtitle">${escapar(subtitulo)}</p>
+    <div class="meta">
+      <span>Registros: <strong>${filas.length}</strong></span>
+      <span>Generado: <strong>${escapar(fechaGeneracion)}</strong></span>
+      ${resumen}
+    </div>
+    <table class="report-table"><colgroup>${anchos}</colgroup><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}${pie}</tbody></table>
+    <p class="foot">Reporte generado automáticamente por TecnoCorte</p>
+  </div></body></html>`;
 
   res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
@@ -196,7 +311,8 @@ async function exportarReservas(req, res) {
     'Reservas registradas',
     ['ID', 'Fecha', 'Hora', 'Cliente', 'Barbero', 'Barbería', 'Servicio', 'Estado'],
     filas,
-    'reservas_tecnocorte.xls'
+    'reservas_tecnocorte.xls',
+    { anchos: ['15%', '10%', '8%', '16%', '16%', '15%', '13%', '10%'] }
   );
 }
 
@@ -213,6 +329,7 @@ async function exportarPedidos(req, res) {
     pedido.estado,
     pedido.pago_confirmado ? 'Sí' : 'No'
   ]);
+  const totalPedidos = pedidos.reduce((total, pedido) => total + (Number(pedido.total) || 0), 0);
 
   return respuestaExcel(
     res,
@@ -220,7 +337,12 @@ async function exportarPedidos(req, res) {
     'Pedidos registrados',
     ['ID', 'Fecha', 'Cliente', 'Correo', 'Total COP', 'Estado', 'Pago confirmado'],
     filas,
-    'pedidos_tecnocorte.xls'
+    'pedidos_tecnocorte.xls',
+    {
+      anchos: ['16%', '16%', '17%', '23%', '12%', '10%', '12%'],
+      resumen: `Ventas registradas: $${totalPedidos.toLocaleString('es-CO')} COP`,
+      totales: ['', '', '', 'Total general', totalPedidos, '', '']
+    }
   );
 }
 

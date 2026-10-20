@@ -27,11 +27,12 @@
           <% var _lista30 = (mensajes || []); if (_lista30.length) { _lista30.forEach(function (mensaje, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista30.length - 1 }; var _finDeLista = _lista30.length - 1; %>
           <tr
             class="mensaje-fila cursor-pointer border-b border-outline-variant/10 transition-colors last:border-0 hover:bg-primary/10"
-            data-nombre="<%= mensaje.nombre %>"
-            data-email="<%= mensaje.email %>"
-            data-tipo="<%= mensaje.tipo_display %>"
-            data-fecha="<%= fmtFecha(mensaje.fecha, "d/m/Y H:i") %>"
-            data-mensaje="<%= mensaje.mensaje %>"
+            data-nombre="<%= encodeURIComponent(String(mensaje.nombre || '')) %>"
+            data-email="<%= encodeURIComponent(String(mensaje.email || '')) %>"
+            data-asunto="<%= encodeURIComponent(String(mensaje.asunto || mensaje.tipo_display || '')) %>"
+            data-tipo="<%= encodeURIComponent(String(mensaje.tipo_display || '')) %>"
+            data-fecha="<%= encodeURIComponent(String(fmtFecha(mensaje.fecha, "d/m/Y H:i"))) %>"
+            data-mensaje="<%= encodeURIComponent(String(mensaje.mensaje || '')) %>"
             data-leido="<% if (mensaje.leido) { %>1<% } else { %>0<% } %>"
             tabindex="0"
             role="button"
@@ -114,6 +115,16 @@
       </span>
     </div>
 
+    <div class="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+      <span class="material-symbols-outlined text-base">subject</span>
+      <span>Asunto</span>
+    </div>
+    <p id="modal-mensaje-asunto" class="mb-5 rounded-xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 text-sm text-on-surface"></p>
+
+    <div class="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+      <span class="material-symbols-outlined text-base">mail</span>
+      <span>Mensaje</span>
+    </div>
     <div
       class="max-h-[45vh] overflow-y-auto whitespace-pre-line rounded-2xl bg-surface-container-high/70 p-5 text-on-surface"
       id="modal-mensaje-texto"
@@ -138,19 +149,33 @@
     if (!modal) return;
     var titulo = document.getElementById("modal-mensaje-titulo");
     var correo = modal.querySelector("header p.mt-1");
+    var asunto = document.getElementById("modal-mensaje-asunto");
     var tipo = document.getElementById("modal-mensaje-tipo");
     var fecha = document.getElementById("modal-mensaje-fecha");
     var texto = document.getElementById("modal-mensaje-texto");
     var responder = document.getElementById("modal-mensaje-responder");
 
+    function dato(fila, nombre) {
+      try {
+        return decodeURIComponent(fila.dataset[nombre] || "");
+      } catch (error) {
+        // Un dato mal codificado sigue mostrándose como texto, nunca como HTML.
+        return fila.dataset[nombre] || "";
+      }
+    }
+
     function abrir(fila) {
-      titulo.textContent = fila.dataset.nombre || "";
-      correo.textContent = fila.dataset.email || "";
-      tipo.textContent = fila.dataset.tipo || "";
-      fecha.textContent = fila.dataset.fecha || "";
-      texto.textContent = fila.dataset.mensaje || "";
+      var nombre = dato(fila, "nombre");
+      var email = dato(fila, "email");
+      var tipoTexto = dato(fila, "tipo");
+      titulo.textContent = nombre;
+      correo.textContent = email;
+      asunto.textContent = dato(fila, "asunto");
+      tipo.textContent = tipoTexto;
+      fecha.textContent = dato(fila, "fecha");
+      texto.textContent = dato(fila, "mensaje");
       responder.href =
-        "mailto:" + (fila.dataset.email || "") + "?subject=" + encodeURIComponent("Re: " + (fila.dataset.tipo || "Tu mensaje"));
+        "mailto:" + email + "?subject=" + encodeURIComponent("Re: " + (tipoTexto || "Tu mensaje"));
       modal.classList.remove("hidden");
       modal.setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
@@ -181,4 +206,3 @@
   })();
 </script>
 <%- include('../partials/admin-mobile-nav', { active: "mensajes" }) %>
-

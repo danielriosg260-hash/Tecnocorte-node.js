@@ -1,12 +1,84 @@
-<% // Layout: dashboard %>
-<%- include('../partials/admin-sidebar', { active: 'peluquerias' }) %>
-<main class="ml-64 flex-1 p-12">
-<div class="flex justify-between items-center mb-10"><div><h1 class="font-headline text-4xl text-primary">Barberías</h1><p class="text-on-surface-variant mt-2">Administra las sedes disponibles para reservar.</p></div><a class="btn-gold-gradient py-3 px-5 rounded font-bold" href="/admin/peluquerias/nueva">+ Nueva barbería</a></div>
-<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-<% if (peluquerias && peluquerias.length) { peluquerias.forEach(function(peluqueria) { %>
-<article class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/20"><span class="material-symbols-outlined text-primary text-4xl">storefront</span><h2 class="font-headline text-2xl mt-4"><%= peluqueria.nombre %></h2><p class="text-on-surface-variant mt-2"><%= peluqueria.ubicacion %></p><p class="text-on-surface-variant text-sm mt-1"><%= peluqueria.telefono %></p><div class="flex gap-4 mt-6"><a class="text-primary" href="/admin/peluquerias/<%= peluqueria.id %>/editar">Editar</a><form method="post" action="/admin/peluquerias/<%= peluqueria.id %>/eliminar"><!-- csrf: auth JWT --><button class="text-error" data-confirm="¿Eliminar esta barbería?">Eliminar</button></form></div></article>
-<% }); } else { %>
-<p class="text-on-surface-variant">Aún no hay barberías.</p>
-<% } %>
-</div>
+<%- include('../partials/admin-sidebar', { active: "peluquerias" }) %>
+<main class="ml-0 md:ml-64 flex-1 p-6 md:p-12 pb-24 md:pb-12">
+  <%- include('../partials/panel-header') %>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-10">
+    <div>
+      <h1 class="font-headline text-4xl text-primary">Barberías</h1>
+      <p class="text-on-surface-variant mt-2">
+        Administra las sedes disponibles para reservar.
+      </p>
+    </div>
+    <a
+      class="btn-gold-gradient py-3 px-5 rounded font-bold"
+      href="/admin/peluquerias/nueva"
+      >+ Nueva barbería</a
+    >
+    <a
+      class="py-3 px-5 rounded font-bold border border-primary/30 text-primary hover:bg-primary/10"
+      href="/admin/galeria"
+      >Moderar galería</a
+    >
+  </div>
+  <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+    
+    <% var _lista35 = (peluquerias || []); if (_lista35.length) { _lista35.forEach(function (peluqueria, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista35.length - 1 }; var _finDeLista = _lista35.length - 1; %>
+    <article
+      class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/20"
+    >
+      
+      <% if (peluqueria.imagen) { %>
+      <img
+        src="<%= peluqueria.imagen %>"
+        alt="<%= peluqueria.nombre %>"
+        class="h-40 w-full rounded-lg object-cover"
+      />
+      <% } else { %>
+      <span class="material-symbols-outlined text-primary text-4xl"
+        >storefront</span
+      >
+      <% } %>
+      <h2 class="font-headline text-2xl mt-4"><%= peluqueria.nombre %></h2>
+      <p class="text-on-surface-variant mt-2"><%= peluqueria.ubicacion %></p>
+      <p class="text-on-surface-variant text-sm mt-1">
+        <%= peluqueria.telefono %>
+      </p>
+      <div class="flex flex-wrap gap-4 mt-6">
+        <a
+          class="text-primary"
+          href="<%= `/admin/peluquerias/${peluqueria.id}/editar` %>"
+          >Editar</a
+        >
+        <% if (peluqueria.imagen) { %>
+        <form
+          method="post"
+          action="<%= `/admin/peluquerias/${peluqueria.id}/quitar-foto` %>"
+        >
+          <button
+            class="text-error"
+            type="submit"
+            data-motivo="Estás a punto de quitar la foto principal de «<%= peluqueria.nombre %>». Se avisará por correo a quien la subió."
+          >
+            Quitar foto
+          </button>
+        </form>
+        <% } %>
+        <form
+          method="post"
+          action="<%= `/admin/peluquerias/${peluqueria.id}/eliminar` %>"
+        >
+          <button
+            class="text-error"
+            data-confirm="¿Eliminar esta barbería?"
+          >
+            Eliminar
+          </button>
+        </form>
+      </div>
+    </article>
+    <% }); } else { %>
+    <p class="text-on-surface-variant">Aún no hay barberías.</p>
+    <% } %>
+  </div>
 </main>
+<%- include('../partials/admin-mobile-nav', { active: "peluquerias" }) %>
+

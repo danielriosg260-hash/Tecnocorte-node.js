@@ -1,89 +1,94 @@
-const PedidoProducto = require("../models/pedidoproducto.model");
-const mongoose = require("mongoose");
+const PedidoProducto = require('../models/pedidoproducto.model');
+const Pedido = require('../models/pedido.model');
 
-function camposLinea(body, parcial = false) {
-  const campos = {};
-  if (!parcial || body.pedido !== undefined) campos.pedido = body.pedido;
-  if (!parcial || body.producto !== undefined) campos.producto = body.producto;
-  if (!parcial || body.cantidad !== undefined) campos.cantidad = Number(body.cantidad);
-  if (!parcial || body.precio !== undefined) campos.precio = Number(body.precio);
-  return campos;
+/** Revisa que el usuario pueda ver el pedido indicado. */
+async function puedeVer(req, pedidoId) {
+  if (['Admin', 'Barbero'].includes(req.usuario.rol)) return true;
+  return Boolean(await Pedido.exists({ _id: pedidoId, cliente: req.usuario._id }));
 }
 
-async function crear(req, res) {
+/** Lista las líneas de los pedidos. */
+async function find(req, res) {
   try {
-    const datos = camposLinea(req.body);
-    const pedidoOk = mongoose.isValidObjectId(datos.pedido);
-    const productoOk = mongoose.isValidObjectId(datos.producto);
-    const cantidadOk = Number.isInteger(datos.cantidad) && datos.cantidad >= 1;
-    const precioOk = Number.isFinite(datos.precio) && datos.precio >= 0;
-    if (!pedidoOk || !productoOk || !cantidadOk || !precioOk) {
-      return res.status(400).json({ mensaje: "Datos de línea de pedido inválidos" });
+    const filtro = req.query.pedido ? { pedido: req.query.pedido } : {};
+
+    if (req.query.pedido && !(await puedeVer(req, req.query.pedido))) {
+      return res.status(403).json({ mensaje: 'No puedes ver este pedido.' });
     }
-    const pedidoProducto = await PedidoProducto.create(datos);
-    res.status(201).json(pedidoProducto);
+
+    const lineas = await PedidoProducto.find(filtro).populate('producto');
+    res.status(200).json(lineas);
   } catch (error) {
-    res.status(400).json({ mensaje: "Datos de línea de pedido inválidos" });
+    res.status(500).json({ mensaje: 'No se pudieron cargar los productos del pedido.' });
   }
 }
 
-async function listarTodos(req, res) {
+/** Busca una línea por su id. */
+async function findOne(req, res) {
   try {
-    const pedidosProducto = await PedidoProducto.find()
-      .populate("pedido", "cliente fecha total estado")
-      .populate("producto", "nombre precio categoria imagen");
-    res.status(200).json(pedidosProducto);
+    const linea = await PedidoProducto.findById(req.params.id).populate('producto');
+    if (!linea) return res.status(404).json({ mensaje: 'Producto del pedido no encontrado.' });
+
+    res.status(200).json(linea);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudieron cargar las líneas de pedido" });
+    res.status(500).json({ mensaje: 'No se pudo cargar el producto del pedido.' });
   }
 }
 
-async function listarUno(req, res) {
+/** Agrega un producto a un pedido. */
+async function insertOne(req, res) {
   try {
-    const pedidoProducto = await PedidoProducto.findOne({ _id: req.params.id })
-      .populate("pedido", "cliente fecha total estado")
-      .populate("producto", "nombre precio categoria imagen");
-    if (!pedidoProducto) {
-      return res.status(404).json({ mensaje: "Línea de pedido no encontrada" });
+    const cantidad = Number(req.body.cantidad);
+    const precio = Number(req.body.precio);
+
+    if (!Number.isInteger(cantidad) || cantidad < 1 || !Number.isFinite(precio) || precio < 0) {
+      return res.status(400).json({ mensaje: 'La cantidad o el precio no son válidos.' });
     }
-    res.status(200).json(pedidoProducto);
+
+    const linea = await PedidoProducto.create({
+      pedido: req.body.pedido,
+      producto: req.body.producto,
+      cantidad,
+      precio
+    });
+
+    const lineas = await PedidoProducto.find({ pedido: req.body.pedido });
+    await Pedido.findByIdAndUpdate(req.body.pedido, {
+      total: lineas.reduce((total, item) => total + item.precio * item.cantidad, 0)
+    });
+
+    res.status(201).json(linea);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo cargar la línea de pedido" });
+    res.status(400).json({ mensaje: 'No se pudo agregar el producto al pedido.' });
   }
 }
 
-async function actualizar(req, res) {
+/** Actualiza la cantidad o el precio de una línea. */
+async function findOneAndUpdate(req, res) {
   try {
-    const pedidoProducto = await PedidoProducto.findOneAndUpdate(
-      { _id: req.params.id },
-      camposLinea(req.body, true),
-      { new: true, runValidators: true },
-    );
-    if (!pedidoProducto) {
-      return res.status(404).json({ mensaje: "Línea de pedido no encontrada" });
-    }
-    res.status(200).json(pedidoProducto);
+    const cambios = {};
+    if (req.body.cantidad !== undefined) cambios.cantidad = Number(req.body.cantidad);
+    if (req.body.precio !== undefined) cambios.precio = Number(req.body.precio);
+
+    const linea = await PedidoProducto.findByIdAndUpdate(req.params.id, cambios, { new: true, runValidators: true });
+    if (!linea) return res.status(404).json({ mensaje: 'Producto del pedido no encontrado.' });
+
+    res.status(200).json(linea);
   } catch (error) {
-    res.status(400).json({ mensaje: "Datos de línea de pedido inválidos" });
+    res.status(400).json({ mensaje: 'No se pudo actualizar el producto del pedido.' });
   }
 }
 
-async function eliminar(req, res) {
+/** Elimina una línea del pedido. */
+async function findOneAndDelete(req, res) {
   try {
-    const pedidoProducto = await PedidoProducto.findOneAndDelete({ _id: req.params.id });
-    if (!pedidoProducto) {
-      return res.status(404).json({ mensaje: "Línea de pedido no encontrada" });
-    }
-    res.status(200).json({ mensaje: "Línea de pedido eliminada correctamente" });
+    const linea = await PedidoProducto.findByIdAndDelete(req.params.id);
+    if (!linea) return res.status(404).json({ mensaje: 'Producto del pedido no encontrado.' });
+
+    res.status(200).json({ mensaje: 'Producto eliminado del pedido.' });
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo eliminar la línea de pedido" });
+    res.status(500).json({ mensaje: 'No se pudo eliminar el producto del pedido.' });
   }
 }
 
-module.exports = {
-  crear,
-  listarTodos,
-  listarUno,
-  actualizar,
-  eliminar,
-};
+module.exports = { find, findOne, findOneAndUpdate, findOneAndDelete, insertOne };

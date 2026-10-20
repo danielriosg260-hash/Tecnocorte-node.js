@@ -6,14 +6,10 @@ const exigirRol = require('../middleware/roles');
 
 router.use(verificarToken);
 
-router.get('/', exigirRol('Admin'), pedidoController.listarTodos);
-
-router.get('/:id', exigirRol('Admin'), pedidoController.listarUno);
-
-router.post('/', exigirRol('Admin'), pedidoController.crear);
-
-router.put('/:id', exigirRol('Admin'), pedidoController.actualizar);
-
-router.delete('/:id', exigirRol('Admin'), pedidoController.eliminar);
+router.get('/', pedidoController.find);
+router.get('/:id', pedidoController.findOne);
+router.post('/', pedidoController.insertOne);
+router.put('/:id', exigirRol('Admin'), pedidoController.findOneAndUpdate);
+router.delete('/:id', exigirRol('Admin'), pedidoController.findOneAndDelete);
 
 module.exports = router;

@@ -1,84 +1,80 @@
-const Peluqueria = require("../models/peluqueria.model");
-const Reserva = require("../models/reserva.model");
-const Usuario = require("../models/usuario.model");
-const Horario = require("../models/horario.model");
-const Bloqueo = require("../models/bloqueo.model");
+const Peluqueria = require('../models/peluqueria.model');
+const Reserva = require('../models/reserva.model');
 
-const camposPeluqueria = (body) => ({
-  nombre: body.nombre,
-  ubicacion: body.ubicacion,
-  telefono: body.telefono,
-});
-
-async function crear(req, res) {
+/** Lista todas las barberías. */
+async function find(req, res) {
   try {
-    const peluqueria = await Peluqueria.create(camposPeluqueria(req.body));
-    res.status(201).json(peluqueria);
-  } catch (error) {
-    res.status(400).json({ mensaje: "Datos de peluquería inválidos" });
-  }
-}
-
-async function listarTodos(req, res) {
-  try {
-    const peluquerias = await Peluqueria.find();
+    const peluquerias = await Peluqueria.find().sort({ nombre: 1 });
     res.status(200).json(peluquerias);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudieron cargar las peluquerías" });
+    res.status(500).json({ mensaje: 'No se pudieron cargar las barberías.' });
   }
 }
 
-async function listarUno(req, res) {
+/** Busca una barbería por su id. */
+async function findOne(req, res) {
   try {
-    const peluqueria = await Peluqueria.findOne({ _id: req.params.id });
-    if (!peluqueria) {
-      return res.status(404).json({ mensaje: "Peluquería no encontrada" });
-    }
+    const peluqueria = await Peluqueria.findById(req.params.id);
+
+    if (!peluqueria) return res.status(404).json({ mensaje: 'Barbería no encontrada.' });
+
     res.status(200).json(peluqueria);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo cargar la peluquería" });
+    res.status(500).json({ mensaje: 'No se pudo cargar la barbería.' });
   }
 }
 
-async function actualizar(req, res) {
+/** Crea una barbería. */
+async function insertOne(req, res) {
   try {
-    const peluqueria = await Peluqueria.findOneAndUpdate({ _id: req.params.id }, camposPeluqueria(req.body), {
-      new: true,
-      runValidators: true,
+    const peluqueria = await Peluqueria.create({
+      nombre: req.body.nombre,
+      ubicacion: req.body.ubicacion,
+      telefono: req.body.telefono,
+      descripcion: req.body.descripcion,
+      imagen: req.body.imagen,
+      dueno: req.body.dueno
     });
-    if (!peluqueria) {
-      return res.status(404).json({ mensaje: "Peluquería no encontrada" });
-    }
+
+    res.status(201).json(peluqueria);
+  } catch (error) {
+    res.status(400).json({ mensaje: 'Datos de la barbería inválidos.' });
+  }
+}
+
+/** Actualiza una barbería. */
+async function findOneAndUpdate(req, res) {
+  try {
+    const campos = ['nombre', 'ubicacion', 'telefono', 'descripcion', 'imagen', 'dueno'];
+    const cambios = {};
+
+    campos.forEach((campo) => {
+      if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
+    });
+
+    const peluqueria = await Peluqueria.findByIdAndUpdate(req.params.id, cambios, { new: true, runValidators: true });
+    if (!peluqueria) return res.status(404).json({ mensaje: 'Barbería no encontrada.' });
+
     res.status(200).json(peluqueria);
   } catch (error) {
-    res.status(400).json({ mensaje: "Datos de peluquería inválidos" });
+    res.status(400).json({ mensaje: 'Datos de la barbería inválidos.' });
   }
 }
 
-async function eliminar(req, res) {
+/** Elimina una barbería sin citas. */
+async function findOneAndDelete(req, res) {
   try {
-    const reservas = await Reserva.countDocuments({ peluqueria: req.params.id });
-    const usuarios = await Usuario.countDocuments({ peluqueria_id: req.params.id });
-    const horarios = await Horario.countDocuments({ peluqueria: req.params.id });
-    const bloqueos = await Bloqueo.countDocuments({ peluqueria: req.params.id });
-    const tieneRelacionados = reservas > 0 || usuarios > 0 || horarios > 0 || bloqueos > 0;
-    if (tieneRelacionados) {
-      return res.status(409).json({ mensaje: "No se puede eliminar una peluquería con datos relacionados" });
+    if (await Reserva.exists({ peluqueria: req.params.id })) {
+      return res.status(409).json({ mensaje: 'No se puede eliminar una barbería con citas.' });
     }
-    const peluqueria = await Peluqueria.findOneAndDelete({ _id: req.params.id });
-    if (!peluqueria) {
-      return res.status(404).json({ mensaje: "Peluquería no encontrada" });
-    }
-    res.status(200).json({ mensaje: "Peluquería eliminada correctamente" });
+
+    const peluqueria = await Peluqueria.findByIdAndDelete(req.params.id);
+    if (!peluqueria) return res.status(404).json({ mensaje: 'Barbería no encontrada.' });
+
+    res.status(200).json({ mensaje: 'Barbería eliminada correctamente.' });
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo eliminar la peluquería" });
+    res.status(500).json({ mensaje: 'No se pudo eliminar la barbería.' });
   }
 }
 
-module.exports = {
-  crear,
-  listarTodos,
-  listarUno,
-  actualizar,
-  eliminar,
-};
+module.exports = { find, findOne, findOneAndUpdate, findOneAndDelete, insertOne };

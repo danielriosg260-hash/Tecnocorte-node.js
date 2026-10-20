@@ -1,13 +1,16 @@
+// Se cargan las variables del .env antes de usar cualquier módulo que las lea.
+require('dotenv').config({ quiet: true });
+
 const express = require('express');
 const path = require('path');
 const expressLayouts = require('express-ejs-layouts');
-const dotenv = require('dotenv');
 const morgan = require('morgan');
-const { connectDB } = require('./config/db');
+const { conectarDB } = require('./config/db');
 const log = require('./services/log');
-const { cargarSesion } = require('./middleware/webauth');
-
-dotenv.config({ quiet: true });
+const { iniciarBackup } = require('./services/backup');
+const { cargarSesion } = require('./middleware/sesion');
+const mantenimiento = require('./middleware/mantenimiento');
+const { manejarErrores, noEncontrado } = require('./middleware/errores');
 
 if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
   throw new Error('MONGO_URI (o DATABASE_URL) y JWT_SECRET son obligatorios para iniciar TecnoCorte');
@@ -18,6 +21,7 @@ if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32)
 }
 
 const app = express();
+
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 
@@ -29,8 +33,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layouts/base');
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
+// Cabeceras de seguridad para todas las respuestas.
 app.use((req, res, next) => {
   res.set({
     'X-Content-Type-Options': 'nosniff',
@@ -38,169 +42,99 @@ app.use((req, res, next) => {
     'Referrer-Policy': 'same-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
-    ...(process.env.NODE_ENV === 'production' ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {})
+    ...(process.env.NODE_ENV === 'production'
+      ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }
+      : {})
   });
   next();
 });
 
-app.locals.fmtMoneda = (valor) => {
-  const n = Number(valor) || 0;
-  return `$${n.toLocaleString('es-CO')}`;
-};
-app.locals.fmtFecha = (valor, patron) => {
+// Funciones que usan todas las vistas.
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const dosDigitos = (numero) => String(numero).padStart(2, '0');
+
+app.locals.fmtMoneda = (valor) => `$${(Number(valor) || 0).toLocaleString('es-CO')}`;
+
+/** Formatea fechas con los mismos códigos que usa Django (d/m/Y, H:i, M, F...). */
+app.locals.fmtFecha = (valor, patron = 'd/m/Y') => {
   if (!valor) return '';
+
   const fecha = new Date(valor);
   if (Number.isNaN(fecha.getTime())) return String(valor);
-  const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  const mapa = {
-    d: String(fecha.getDate()),
+
+  const reemplazos = {
+    d: dosDigitos(fecha.getDate()),
     j: String(fecha.getDate()),
-    m: String(fecha.getMonth() + 1),
+    m: dosDigitos(fecha.getMonth() + 1),
     n: String(fecha.getMonth() + 1),
-    M: meses[fecha.getMonth()].slice(0, 3),
-    F: meses[fecha.getMonth()],
+    M: MESES[fecha.getMonth()].slice(0, 3),
+    F: MESES[fecha.getMonth()],
     Y: String(fecha.getFullYear()),
     y: String(fecha.getFullYear()).slice(-2),
-    H: String(fecha.getHours()).padStart(2, '0'),
+    H: dosDigitos(fecha.getHours()),
     G: String(fecha.getHours()),
-    i: String(fecha.getMinutes()).padStart(2, '0')
+    h: dosDigitos(fecha.getHours() % 12 || 12),
+    g: String(fecha.getHours() % 12 || 12),
+    i: dosDigitos(fecha.getMinutes()),
+    s: dosDigitos(fecha.getSeconds()),
+    l: DIAS_SEMANA[fecha.getDay()],
+    D: DIAS_SEMANA[fecha.getDay()].slice(0, 3)
   };
-  const tokens = /yyyy|MMM|MM|dd|HH|mm|d|j|m|n|M|F|Y|y|H|G|i/g;
-  return patron.replace(tokens, (token) => {
-    if (token === 'dd') return String(fecha.getDate()).padStart(2, '0');
-    if (token === 'MM') return String(fecha.getMonth() + 1).padStart(2, '0');
-    if (token === 'yyyy') return String(fecha.getFullYear());
-    if (token === 'MMM') return meses[fecha.getMonth()].slice(0, 3);
-    if (token === 'HH') return String(fecha.getHours()).padStart(2, '0');
-    if (token === 'mm') return String(fecha.getMinutes()).padStart(2, '0');
-    return mapa[token] || token;
+
+  return patron.replace(/\\.|./g, (token) => {
+    if (token.startsWith('\\')) return token.slice(1);
+    return Object.prototype.hasOwnProperty.call(reemplazos, token) ? reemplazos[token] : token;
   });
 };
+
 app.locals.fmtHora = (valor) => {
   if (!valor) return '';
-  const fecha = new Date(`1970-01-01T${valor}`);
-  if (Number.isNaN(fecha.getTime())) return String(valor);
-  return fecha.toTimeString().slice(0, 5);
-};
-app.locals.cantidad = 0;
-app.locals.notificaciones_no_leidas = 0;
-app.locals.mensajes_no_leidos = 0;
 
-app.use((req, res, next) => {
-  res.locals.logueado = null;
-  res.locals.usuario_actual = { foto: '' };
-  res.locals.cantidad = 0;
-  res.locals.notificaciones_no_leidas = 0;
-  res.locals.mensajes_no_leidos = 0;
-  res.locals.messages = [];
-  res.locals.form_post = '';
-  res.locals.exito = '';
-  res.locals.error = '';
-  res.locals.mensaje_tienda = '';
-  res.locals.mensaje_carrito = '';
-  res.locals.rol = '';
-  res.locals.editar = false;
-  res.locals.backUrl = '';
-  res.locals.formAction = '';
-  res.locals.total = 0;
-  res.locals.maximo = 100;
-  res.locals.ventas_servicios = 0;
-  res.locals.ventas_productos = 0;
-  res.locals.total_clientes = 0;
-  res.locals.estado_citas = [];
-  res.locals.productos = [];
-  res.locals.servicios = [];
-  res.locals.peluquerias = [];
-  res.locals.peluqueros = [];
-  res.locals.usuarios = [];
-  res.locals.reservas = [];
-  res.locals.datos = [];
-  res.locals.ingresos = [];
-  res.locals.bloques_horarios = [];
-  res.locals.mensajes = [];
-  res.locals.notificaciones = [];
-  res.locals.calificaciones_reservas = [];
-  res.locals.horarios_json = '{}';
-  res.locals.bloqueos_json = '{}';
-  res.locals.reservas_json = '{}';
-  res.locals.lista_horarios = [];
-  res.locals.registros = [];
-  res.locals.usuario = null;
-  res.locals.producto = null;
-  res.locals.reserva = null;
-  res.locals.peluqueria = null;
-  res.locals.peluquero = null;
-  res.locals.pedido = null;
-  res.locals.items = [];
-  res.locals.clientes = [];
-  res.locals.roles = [];
-  res.locals.dia_semana = '';
-  res.locals.bloqueo = null;
-  res.locals.estados = [];
-  res.locals.categorias = [];
-  res.locals.reserva_estados = [];
-  res.locals.peluqueria_actual = null;
-  res.locals.rol_filtro = '';
-  res.locals.total_usuarios = 0;
-  res.locals.proximo = '';
-  res.locals.enviado = false;
-  res.locals.valido = true;
-  res.locals.fecha_hoy = '';
-  res.locals.asunto = '';
-  res.locals.cuerpo = '';
-  res.locals.enlace = '';
-  res.locals.logo_url = '';
-  res.locals.ultimas_reservas = [];
-  res.locals.total_admin = 0;
-  res.locals.promedio = 0;
-  res.locals.hora_actual = '';
-  res.locals.horarios = [];
-  res.locals.total_peluqueros = 0;
-  res.locals.total_calificaciones = 0;
-  res.locals.texto_enlace = 'Ver detalles';
-  res.locals.citas = [];
-  res.locals.servicio_inicial = '';
-  res.locals.bloqueos = [];
-  res.locals.citas_hoy = [];
-  res.locals.calificaciones = [];
-  res.locals.pedidos = [];
-  res.locals.peluqueria_inicial = '';
-  next();
-});
+  if (valor instanceof Date || /^\d{4}-\d{2}-\d{2}/.test(String(valor))) {
+    const fecha = new Date(valor);
+    if (!Number.isNaN(fecha.getTime())) return `${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;
+  }
+
+  return String(valor).slice(0, 5);
+};
+
+app.locals.anio = new Date().getFullYear();
 
 app.use(cargarSesion);
-
+app.use(mantenimiento);
 app.use(morgan('dev'));
 
+// API
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/usuarios', require('./routes/usuario.routes'));
 app.use('/api/productos', require('./routes/producto.routes'));
 app.use('/api/peluquerias', require('./routes/peluqueria.routes'));
-app.use('/api/pedidos', require('./routes/pedido.routes'));
 app.use('/api/reservas', require('./routes/reserva.routes'));
+app.use('/api/pedidos', require('./routes/pedido.routes'));
 app.use('/api/pedidos-producto', require('./routes/pedidoproducto.routes'));
 
-app.use('/', require('./routes/page.routes'));
+// Páginas
+app.use('/', require('./routes/publico.routes'));
+app.use('/', require('./routes/cuenta.routes'));
+app.use('/barbero', require('./routes/barbero.routes'));
+app.use('/admin', require('./routes/admin.routes'));
 
-app.use((error, req, res, next) => {
-  console.error('Error no controlado:', error.message);
-  if (res.headersSent) return next(error);
-  if (req.path.startsWith('/api/')) return res.status(500).json({ mensaje: 'Error interno del servidor' });
-  return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
-});
+app.use(noEncontrado);
+app.use(manejarErrores);
 
 const PORT = process.env.PORT || 3000;
 
-const startServer = async () => {
+const iniciarServidor = async () => {
   try {
-    await connectDB();
+    await conectarDB();
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Servidor corriendo en el puerto http://localhost:${PORT}`);
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
       log.escribir(`Servidor iniciado en el puerto ${PORT}`);
     });
 
+    iniciarBackup();
   } catch (error) {
     console.error(`No se pudo iniciar TecnoCorte: ${error.message}`);
     log.escribir(`ERROR al iniciar: ${error.message}`);
@@ -208,4 +142,4 @@ const startServer = async () => {
   }
 };
 
-void startServer();
+void iniciarServidor();

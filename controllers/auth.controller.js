@@ -1,145 +1,175 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const Usuario = require("../models/usuario.model");
-const Notificacion = require("../models/notificacion.model");
-const Ingreso = require("../models/ingreso.model");
-const transporter = require("../config/email");
-const { enviarCorreoBonito } = require("../config/emailtemplate");
-const { guardarCodigo, verificarCodigo } = require("../config/emailverification");
-const { clearSessionCookie, setSessionCookie } = require("../config/session");
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const Usuario = require('../models/usuario.model');
+const Ingreso = require('../models/ingreso.model');
+const Notificacion = require('../models/notificacion.model');
+const Configuracion = require('../models/configuracion.model');
+const { cerrarSesion, guardarSesion } = require('../config/session');
+const {
+  enviarCodigoVerificacion,
+  enviarCorreo,
+  guardarCodigo,
+  verificarCodigo
+} = require('../services/correo');
+const { avisarCuentaSuspendida } = require('../services/notificaciones');
+const { mensajeError, normalizarEmail, panelDe, urlSegura } = require('../utils/objetos');
 
-const HASH_FALSO = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.VbZV5hQ9Qf6yUQxV0n5h8z0fP1w8W8K";
-
-function emailLimpio(email) {
-  if (typeof email !== "string") return "";
-  return email.trim().toLowerCase();
-}
-
+/** Crea el token JWT que se guarda en la cookie de sesión. */
 function generarToken(id, tokenVersion) {
-  return jwt.sign({ id: id, tokenVersion: tokenVersion || 0 }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || "7d",
+  return jwt.sign({ id, tokenVersion: tokenVersion || 0 }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 }
 
-function datosPublicos(usuario) {
-  return {
-    id: usuario._id,
-    nombre: usuario.nombre,
-    apellido: usuario.apellido,
-    email: usuario.email,
-    rol: usuario.rol,
-    activo: usuario.activo,
-    email_verificado: usuario.email_verificado !== false,
-  };
+// ---------------------------------------------------------------------------
+// Login
+// ---------------------------------------------------------------------------
+
+function mostrarLogin(req, res, error = '') {
+  return res.render('publicos/login', {
+    layout: false,
+    error,
+    proximo: urlSegura(req.body.next || req.query.next || ''),
+    valores: req.method === 'POST' ? req.body : {}
+  });
 }
 
-async function registro(req, res) {
+async function iniciarSesion(req, res) {
   try {
-    const nombre = req.body.nombre;
-    const apellido = req.body.apellido;
-    const password = req.body.password;
-    const telefono = req.body.telefono;
-    const email = emailLimpio(req.body.email);
-
-    if (typeof nombre !== "string" || typeof apellido !== "string" || !email) {
-      return res.status(400).json({ mensaje: "Revisa los datos ingresados." });
-    }
-    if (typeof password !== "string" || password.length < 8 || password.length > 128) {
-      return res.status(400).json({ mensaje: "La contraseña debe tener entre 8 y 128 caracteres." });
-    }
-
-    const existe = await Usuario.findOne({ email: email });
-    if (existe) return res.status(400).json({ mensaje: "El correo ya está registrado" });
-
-    const usuario = await Usuario.create({
-      nombre,
-      apellido,
-      email,
-      password,
-      telefono,
-      email_verificado: false,
-    });
-    const codigo = await guardarCodigo(usuario);
-
-    await enviarCorreoBonito(transporter, {
-      to: email,
-      subject: "Verifica tu correo de TecnoCorte",
-      title: "Verifica tu correo",
-      preheader: "Tu código de verificación vence en 15 minutos.",
-      greeting: `¡Hola ${nombre}!`,
-      content: `<p>Tu cuenta fue creada. Usa este código para activarla:</p><p><strong style="font-size:28px">${codigo}</strong></p><p>El código vence en 15 minutos.</p>`,
-      text: `Tu código de verificación es ${codigo}. Vence en 15 minutos.`,
-    }).catch(function (error) {
-      console.error("Error al enviar correo:", error.message);
-    });
-
-    return res
-      .status(201)
-      .json({
-        mensaje: "Cuenta creada. Revisa tu correo para verificarla.",
-        verificacion_requerida: true,
-        usuario: datosPublicos(usuario),
-      });
-  } catch (error) {
-    if (error.code === 11000) return res.status(400).json({ mensaje: "El correo ya está registrado" });
-    return res.status(400).json({ mensaje: "No se pudo completar el registro" });
-  }
-}
-
-async function login(req, res) {
-  try {
-    const email = emailLimpio(req.body.email || req.body.user);
+    const email = normalizarEmail(req.body.user || req.body.email);
     const password = req.body.password;
 
-    if (!email || typeof password !== "string" || password.length === 0) {
-      return res.status(400).json({ mensaje: "Ingresa correo y contraseña" });
+    if (!email || typeof password !== 'string' || !password) {
+      return mostrarLogin(req, res, 'Ingresa correo y contraseña.');
     }
 
-    const usuario = await Usuario.findOne({ email: email }).select("+password +tokenVersion");
+    const usuario = await Usuario.findOne({ email }).select('+password +tokenVersion');
 
-    let valida = false;
-    if (usuario) {
-      valida = await usuario.compararPassword(password);
-    } else {
-      valida = await bcrypt.compare(password, HASH_FALSO);
+    if (!usuario || !(await usuario.compararPassword(password))) {
+      return mostrarLogin(req, res, 'Correo o contraseña incorrectos.');
     }
 
-    if (!usuario || !valida) {
-      return res.status(401).json({ mensaje: "Correo o contraseña incorrectos" });
-    }
     if (usuario.activo === false) {
-      return res.status(403).json({ mensaje: "Tu cuenta está suspendida. Contacta al administrador." });
-    }
-    if (usuario.email_verificado === false) {
-      return res
-        .status(403)
-        .json({
-          mensaje: "Verifica tu correo antes de iniciar sesión.",
-          verificacion_requerida: true,
-          email: usuario.email,
-        });
+      void avisarCuentaSuspendida(usuario);
+      return mostrarLogin(req, res, 'Tu cuenta está suspendida. Contacta al administrador.');
     }
 
-    const token = generarToken(usuario._id, usuario.tokenVersion);
-    setSessionCookie(res, token);
+    if (usuario.email_verificado === false) {
+      return mostrarLogin(req, res, 'Verifica tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.');
+    }
+
+    guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
     await Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
 
-    return res.status(200).json({ mensaje: "Inicio de sesión exitoso", usuario: datosPublicos(usuario) });
+    const destino = req.body.next || req.query.next;
+    return res.redirect(destino ? urlSegura(destino) : panelDe(usuario));
   } catch (error) {
-    return res.status(500).json({ mensaje: "No se pudo iniciar sesión" });
+    console.error('Error en el login:', error.message);
+    return mostrarLogin(req, res, 'No se pudo iniciar sesión.');
   }
+}
+
+function salir(req, res) {
+  cerrarSesion(res);
+  return res.redirect('/');
+}
+
+// ---------------------------------------------------------------------------
+// Registro y verificación de correo
+// ---------------------------------------------------------------------------
+
+async function mostrarRegistro(req, res) {
+  const config = await Configuracion.cargar();
+
+  return res.render('publicos/registro', {
+    layout: false,
+    proximo: req.query.next || '',
+    error: '',
+    valores: {},
+    registro_cerrado: !config.registro_abierto,
+    form_post: ''
+  });
+}
+
+async function registrar(req, res) {
+  const datos = req.body;
+  const email = normalizarEmail(datos.email);
+  const config = await Configuracion.cargar();
+
+  const volverAlFormulario = (mensaje) =>
+    res.status(400).render('publicos/registro', {
+      layout: false,
+      proximo: datos.next || '',
+      error: mensaje,
+      valores: datos,
+      registro_cerrado: false,
+      form_post: new URLSearchParams(datos).toString()
+    });
+
+  if (!config.registro_abierto) {
+    return res.status(403).render('publicos/registro', {
+      layout: false,
+      proximo: '',
+      error: '',
+      valores: {},
+      registro_cerrado: true,
+      form_post: ''
+    });
+  }
+
+  if (!datos.nombre || !datos.apellido || !email || typeof datos.password !== 'string' || datos.password.length < 8) {
+    return volverAlFormulario('Completa los datos y usa una contraseña de al menos 8 caracteres.');
+  }
+
+  try {
+    const usuario = await Usuario.create({
+      nombre: datos.nombre,
+      apellido: datos.apellido,
+      email,
+      password: datos.password,
+      telefono: datos.telefono,
+      email_verificado: false
+    });
+
+    const codigo = await guardarCodigo(usuario);
+    await enviarCodigoVerificacion(usuario, codigo);
+
+    return res.redirect(
+      `/verificar-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(datos.next || '')}`
+    );
+  } catch (error) {
+    return volverAlFormulario(mensajeError(error));
+  }
+}
+
+function mostrarVerificacion(req, res, error = '', enviado = false) {
+  return res.render('publicos/verificar_email', {
+    layout: false,
+    email: req.body.email || req.query.email || '',
+    next: req.body.next || req.query.next || '',
+    error,
+    enviado
+  });
 }
 
 async function verificarEmail(req, res) {
-  const email = emailLimpio(req.body.email);
-  const codigo = String(req.body.codigo || "").trim();
+  const email = normalizarEmail(req.body.email || req.query.email);
+  const codigo = String(req.body.codigo || '').trim();
+  const next = urlSegura(req.body.next || req.query.next || '');
 
-  const usuario = await Usuario.findOne({ email: email }).select(
-    "+email_verificacion_token +email_verificacion_expira +tokenVersion",
+  const usuario = await Usuario.findOne({ email }).select(
+    '+email_verificacion_token +email_verificacion_expira +tokenVersion'
   );
-  const codigoOk = /^\d{6}$/.test(codigo) && usuario && verificarCodigo(usuario, codigo);
-  if (!usuario || !codigoOk) {
-    return res.status(400).json({ mensaje: "El código no es válido o ya expiró." });
+
+  if (!usuario || !/^\d{6}$/.test(codigo) || !verificarCodigo(usuario, codigo)) {
+    return res.status(400).render('publicos/verificar_email', {
+      layout: false,
+      email,
+      next,
+      error: 'El código no es válido o ya expiró.',
+      enviado: false
+    });
   }
 
   usuario.email_verificado = true;
@@ -147,29 +177,141 @@ async function verificarEmail(req, res) {
   usuario.email_verificacion_expira = undefined;
   await usuario.save();
 
-  const token = generarToken(usuario._id, usuario.tokenVersion);
-  setSessionCookie(res, token);
-  return res
-    .status(200)
-    .json({ mensaje: "Correo verificado correctamente.", usuario: datosPublicos(usuario) });
+  await Notificacion.create({
+    usuario: usuario._id,
+    tipo: 'sistema',
+    titulo: 'Cuenta activada',
+    mensaje: 'Tu cuenta de TecnoCorte fue verificada correctamente.'
+  });
+
+  guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
+  return res.redirect(next !== '/' ? next : panelDe(usuario));
 }
 
-function logout(req, res) {
-  clearSessionCookie(res);
-  res.status(200).json({ mensaje: "Sesión cerrada correctamente" });
+async function reenviarVerificacion(req, res) {
+  const email = normalizarEmail(req.body.email || req.query.email);
+  const next = urlSegura(req.body.next || req.query.next || '');
+  const usuario = await Usuario.findOne({ email });
+
+  if (usuario && usuario.email_verificado === false) {
+    const codigo = await guardarCodigo(usuario);
+    await enviarCodigoVerificacion(usuario, codigo);
+  }
+
+  return res.render('publicos/verificar_email', {
+    layout: false,
+    email,
+    next,
+    enviado: true,
+    error: ''
+  });
 }
 
-function perfil(req, res) {
-  res.status(200).json({ usuario: req.usuario });
+// ---------------------------------------------------------------------------
+// Recuperación de contraseña
+// ---------------------------------------------------------------------------
+
+function mostrarRecuperar(req, res, error = '', enviado = false) {
+  return res.render('publicos/recuperar_password', {
+    title: 'Recuperar contraseña - TecnoCorte',
+    error,
+    enviado
+  });
+}
+
+async function solicitarRecuperacion(req, res) {
+  const email = normalizarEmail(req.body.email);
+
+  if (email) {
+    const usuario = await Usuario.findOne({ email });
+
+    if (usuario) {
+      const token = crypto.randomBytes(32).toString('hex');
+      usuario.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+      usuario.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
+      await usuario.save();
+
+      const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+      await enviarCorreo({
+        to: usuario.email,
+        subject: 'Restablece tu contraseña de TecnoCorte',
+        title: 'Restablece tu contraseña',
+        preheader: 'Tu enlace de recuperación vence en una hora.',
+        greeting: `Hola ${usuario.nombre},`,
+        content:
+          '<p>Solicitaste cambiar tu contraseña de TecnoCorte.</p><p>Usa el botón para crear una nueva contraseña. Por seguridad, el enlace vence en una hora.</p>',
+        action: { label: 'Restablecer contraseña', url: `${base}/restablecer-password/${token}` },
+        text: 'Solicitaste cambiar tu contraseña. Este enlace vence en una hora.'
+      });
+    }
+  }
+
+  return res.render('publicos/recuperar_password', {
+    title: 'Recuperar contraseña - TecnoCorte',
+    enviado: true,
+    error: ''
+  });
+}
+
+async function buscarPorToken(token) {
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+
+  return Usuario.findOne({
+    resetPasswordToken: hash,
+    resetPasswordExpires: { $gt: new Date() }
+  });
+}
+
+async function mostrarRestablecer(req, res, error = '') {
+  const usuario = await buscarPorToken(req.params.token);
+
+  return res.render('publicos/restablecer_password', {
+    title: 'Cambiar contraseña - TecnoCorte',
+    token: req.params.token,
+    valido: Boolean(usuario),
+    error
+  });
+}
+
+async function restablecerPassword(req, res) {
+  const usuario = await buscarPorToken(req.params.token);
+  const { password, password_confirm } = req.body;
+
+  if (!usuario) {
+    return mostrarRestablecer(req, res, 'El enlace no es válido o ya expiró.');
+  }
+
+  if (password !== password_confirm || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).render('publicos/restablecer_password', {
+      title: 'Cambiar contraseña - TecnoCorte',
+      token: req.params.token,
+      valido: true,
+      error: 'Las contraseñas deben coincidir y tener al menos 8 caracteres.'
+    });
+  }
+
+  usuario.password = password;
+  usuario.resetPasswordToken = undefined;
+  usuario.resetPasswordExpires = undefined;
+  await usuario.save();
+
+  return res.redirect('/login');
 }
 
 module.exports = {
-  datosPublicos,
+  buscarPorToken,
   generarToken,
-  login,
-  logout,
-  normalizarEmail: emailLimpio,
-  perfil,
-  registro,
-  verificarEmail,
+  iniciarSesion,
+  mostrarLogin,
+  mostrarRecuperar,
+  mostrarRegistro,
+  mostrarRestablecer,
+  mostrarVerificacion,
+  reenviarVerificacion,
+  registrar,
+  restablecerPassword,
+  salir,
+  solicitarRecuperacion,
+  verificarEmail
 };

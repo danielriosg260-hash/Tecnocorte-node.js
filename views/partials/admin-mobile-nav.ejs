@@ -1,0 +1,21 @@
+<%# Barra de navegación inferior para móviles del administrador %>
+<%
+  var activo = typeof active !== 'undefined' ? active : '';
+  var clases = function (nombre) {
+    return 'flex flex-col items-center space-y-1 text-on-surface-variant p-2 ' + (activo === nombre ? 'panel-glass-link--active' : '');
+  };
+%>
+<nav class="panel-glass-mobile md:hidden fixed bottom-0 w-full z-40 flex justify-around items-center px-4 py-3">
+  <a class="<%= clases('dashboard') %>" href="/admin"><span class="material-symbols-outlined">dashboard</span><span class="font-label text-[10px] uppercase tracking-wider">Inicio</span></a>
+  <a class="<%= clases('inicio') %>" href="/admin/editar-inicio"><span class="material-symbols-outlined">home_work</span><span class="font-label text-[10px] uppercase tracking-wider">Editar</span></a>
+  <a class="flex flex-col items-center space-y-1 text-primary p-2" href="/?vista=publica" target="_blank" rel="noopener" title="Abrir el sitio público"><span class="material-symbols-outlined">open_in_new</span><span class="font-label text-[10px] uppercase tracking-wider">Ver sitio</span></a>
+  <a class="<%= clases('reservas') %>" href="/admin/reservas"><span class="material-symbols-outlined">calendar_month</span><span class="font-label text-[10px] uppercase tracking-wider">Citas</span></a>
+  <a class="<%= clases('peluqueros') %>" href="/admin/peluqueros"><span class="material-symbols-outlined">content_cut</span><span class="font-label text-[10px] uppercase tracking-wider">Barberos</span></a>
+  <a class="<%= clases('servicios') %>" href="/admin/solicitudes-servicios"><span class="material-symbols-outlined">design_services</span><span class="font-label text-[10px] uppercase tracking-wider">Servicios</span></a>
+  <a class="<%= clases('usuarios') %>" href="/admin/usuarios"><span class="material-symbols-outlined">group</span><span class="font-label text-[10px] uppercase tracking-wider">Usuarios</span></a>
+  <a class="<%= clases('productos') %>" href="/admin/productos"><span class="material-symbols-outlined">inventory_2</span><span class="font-label text-[10px] uppercase tracking-wider">Productos</span></a>
+  <a class="<%= clases('pedidos') %>" href="/admin/pedidos"><span class="material-symbols-outlined">shopping_bag</span><span class="font-label text-[10px] uppercase tracking-wider">Pedidos</span></a>
+  <a class="<%= clases('galeria') %>" href="/admin/galeria"><span class="material-symbols-outlined">photo_library</span><span class="font-label text-[10px] uppercase tracking-wider">Galería</span></a>
+  <a class="<%= clases('acciones') %>" href="/admin/acciones"><span class="material-symbols-outlined">history</span><span class="font-label text-[10px] uppercase tracking-wider">Auditoría</span></a>
+  <a class="<%= clases('configuracion') %>" href="/admin/configuracion"><span class="material-symbols-outlined">tune</span><span class="font-label text-[10px] uppercase tracking-wider">Ajustes</span></a>
+</nav>

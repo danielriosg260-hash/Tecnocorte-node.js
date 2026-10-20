@@ -10,6 +10,11 @@ const usuarioSchema = new mongoose.Schema({
   rol: { type: String, enum: ['Cliente', 'Barbero', 'Admin'], default: 'Cliente' },
   activo: { type: Boolean, default: true },
   peluqueria_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Peluqueria' },
+  aviso_correo: { type: Boolean, default: true },
+  aviso_whatsapp: { type: Boolean, default: false },
+  aviso_sms: { type: Boolean, default: false },
+  aviso_anticipacion_horas: { type: Number, default: 2, min: 1, max: 72 },
+  privacidad_perfil: { type: Boolean, default: false },
   foto: {
     url: { type: String, default: '' },
     public_id: { type: String, default: '' }

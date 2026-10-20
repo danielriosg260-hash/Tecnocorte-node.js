@@ -1,0 +1,557 @@
+<%# Título: TecnoCorte - Configuración de Barbero %>
+
+<%- include('../partials/peluquero-sidebar', { active: "configuracion" }) %>
+<main class="flex-1 md:ml-72 flex flex-col min-h-screen relative bg-background">
+  <%- include('../partials/panel-header') %>
+
+  <div class="p-6 md:p-12 space-y-10 max-w-5xl mx-auto w-full">
+    <div class="border-b border-surface-container-low pb-6">
+      <h1 class="font-headline text-4xl text-on-surface tracking-tight mb-2">
+        Configuración
+      </h1>
+      <p class="font-body text-on-surface-variant text-sm">
+        Administra tu portafolio, tu agenda, los servicios que ofreces y cómo
+        quieres que te avisemos.
+      </p>
+    </div>
+
+    
+    <nav class="flex flex-wrap gap-2" aria-label="Secciones de configuración">
+      <% var _lista44 = (pestanas || []); if (_lista44.length) { _lista44.forEach(function (p, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista44.length - 1 }; var _finDeLista = _lista44.length - 1; %>
+      <a
+        href="/barbero/configuracion?seccion=<%= p %>"
+        class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all active:scale-95 <% if (pestana == p) { %>bg-primary text-on-primary<% } else { %>border border-outline-variant/30 text-on-surface-variant hover:border-primary hover:text-primary<% } %>"
+        ><%= p %></a
+      >
+      <% }); } %>
+    </nav>
+
+    
+    <% if (pestana == "portafolio") { %>
+    <section class="bg-surface-container-low rounded-xl p-8 ambient-glow">
+      <h2 class="font-headline text-2xl text-primary-container mb-6">
+        Mi portafolio
+      </h2>
+      <form method="post" enctype="multipart/form-data" class="space-y-5 max-w-lg">
+        
+        <input type="hidden" name="accion" value="portafolio" />
+        <div>
+          <label
+            class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold block mb-1"
+            >Foto de perfil</label
+          >
+          <% if (usuario.foto) { %>
+          <img
+            src="<%= usuario.foto.url %>"
+            alt="<%= usuario.nombre %>"
+            class="mb-3 h-20 w-20 rounded-full object-cover border border-outline-variant/30"
+          />
+          <% } %>
+          <input
+            type="file"
+            name="foto"
+            accept="image/*"
+            class="w-full text-on-surface-variant text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-primary"
+          />
+        </div>
+        <div>
+          <label
+            class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold block mb-1"
+            >Nombre</label
+          >
+          <input
+            class="w-full bg-transparent border-b border-outline-variant/30 py-2 focus:outline-none focus:border-primary text-on-surface text-sm"
+            name="nombre"
+            value="<%= usuario.nombre %>"
+            required
+          />
+        </div>
+        <div>
+          <label
+            class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold block mb-1"
+            >Apellido</label
+          >
+          <input
+            class="w-full bg-transparent border-b border-outline-variant/30 py-2 focus:outline-none focus:border-primary text-on-surface text-sm"
+            name="apellido"
+            value="<%= usuario.apellido %>"
+            required
+          />
+        </div>
+        <div>
+          <label
+            class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold block mb-1"
+            >Teléfono</label
+          >
+          <input
+            class="w-full bg-transparent border-b border-outline-variant/30 py-2 focus:outline-none focus:border-primary text-on-surface text-sm"
+            name="telefono"
+            value="<%= usuario.telefono %>"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3 rounded-md border border-primary/40 text-primary hover:bg-primary/5 transition-colors text-sm font-semibold uppercase tracking-widest active:scale-95"
+        >
+          Guardar cambios
+        </button>
+      </form>
+
+      <% if (peluqueria) { %>
+      <div class="mt-8 pt-6 border-t border-outline-variant/10">
+        <p class="text-sm text-on-surface-variant mb-4">
+          Tu portafolio público en
+          <span class="text-on-surface font-semibold"><%= peluqueria.nombre %></span
+          >.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a
+            href="/barbero/galeria"
+            class="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-primary transition-colors hover:border-primary active:scale-95"
+            ><span class="material-symbols-outlined text-base">photo_library</span
+            >Galería (<%= (fotos || []).length %>)</a
+          >
+          <a
+            href="/barbero/peluqueria"
+            class="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-primary transition-colors hover:border-primary active:scale-95"
+            ><span class="material-symbols-outlined text-base">storefront</span
+            >Editar mi peluquería</a
+          >
+          <a
+            href="/barbero/perfil"
+            class="inline-flex items-center gap-2 rounded-md border border-outline-variant/30 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-primary transition-colors hover:border-primary active:scale-95"
+            ><span class="material-symbols-outlined text-base">visibility</span
+            >Ver mi perfil público</a
+          >
+        </div>
+      </div>
+      <% } else { %>
+      <p class="mt-8 pt-6 border-t border-outline-variant/10 text-sm text-on-surface-variant">
+        Aún no tienes una peluquería asignada. El administrador es quien la crea
+        y te asigna.
+      </p>
+      <% } %>
+    </section>
+    <% } %>
+
+    
+    <% if (pestana == "agenda") { %>
+    <section class="flex flex-col gap-8">
+      <div class="bg-surface-container-low rounded-xl p-8">
+        <h2 class="font-headline text-2xl text-primary-container mb-4">
+          Horario de atención
+        </h2>
+        <p class="text-sm text-on-surface-variant mb-6">
+          Horario general de tu peluquería. Si necesitas cambiarlo, pídele al
+          administrador.
+        </p>
+        <% if (horarios) { %>
+        <ul class="divide-y divide-outline-variant/10">
+          <% var _lista45 = (horarios || []); if (_lista45.length) { _lista45.forEach(function (h, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista45.length - 1 }; var _finDeLista = _lista45.length - 1; %>
+          <li class="py-3 flex items-center justify-between gap-4 text-sm">
+            <span class="flex items-center gap-3 text-on-surface">
+              <span
+                class="material-symbols-outlined text-base <% if (h.activo) { %>text-primary<% } else { %>text-on-surface-variant/40<% } %>"
+                ><% if (h.activo) { %>event_available<% } else { %>event_busy<% } %></span
+              ><%= h.dia_semana_display %>
+            </span>
+            <span class="text-on-surface-variant"
+              ><% if (h.activo) { %><%= fmtHora(h.hora_inicio) %> - <%= fmtHora(h.hora_fin) %><% } else { %>Cerrado<% } %></span
+            >
+          </li>
+          <% }); } %>
+        </ul>
+        <% } else { %>
+        <p class="text-sm text-on-surface-variant">
+          Tu peluquería todavía no tiene horarios configurados.
+        </p>
+        <% } %>
+      </div>
+
+      <div class="bg-surface-container-low rounded-xl p-8">
+        <h2 class="font-headline text-2xl text-primary-container mb-4">
+          Días y horas bloqueados
+        </h2>
+        <p class="text-sm text-on-surface-variant mb-6">
+          Últimos bloqueos que no reciben citas.
+        </p>
+        <% if (bloqueos) { %>
+        <ul class="divide-y divide-outline-variant/10">
+          <% var _lista46 = (bloqueos || []); if (_lista46.length) { _lista46.forEach(function (b, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista46.length - 1 }; var _finDeLista = _lista46.length - 1; %>
+          <li class="py-3 flex items-center justify-between gap-4 text-sm">
+            <span class="flex items-center gap-3 text-on-surface">
+              <span class="material-symbols-outlined text-base text-error"
+                >block</span
+              ><%= fmtFecha(b.fecha, "d M Y") %>
+            </span>
+            <span class="text-on-surface-variant"
+              ><%= ((fmtHora(b.hora) === undefined || fmtHora(b.hora) === null || fmtHora(b.hora) === '') ? "Todo el día" : fmtHora(b.hora)) %><% if (b.motivo) { %> · <%= b.motivo %><% } %></span
+            >
+          </li>
+          <% }); } %>
+        </ul>
+        <% } else { %>
+        <p class="text-sm text-on-surface-variant">
+          No hay días bloqueados. ¡Tu agenda está libre!
+        </p>
+        <% } %>
+      </div>
+    </section>
+    <% } %>
+
+    
+    <% if (pestana == "servicios") { %>
+    <div class="space-y-10">
+      
+      <section>
+        <p class="tc-eyebrow mb-3">Catálogo</p>
+        <h2 class="tc-display text-3xl md:text-4xl">
+          Servicios y <span class="tc-gold-text">solicitudes</span>
+        </h2>
+        <p class="mt-3 max-w-2xl text-sm text-on-surface-variant">
+          Atiendes los servicios del sistema. Si necesitas uno propio, envíale la
+          solicitud al administrador y él lo crea a tu nombre.
+        </p>
+      </section>
+
+      
+      <section>
+        <h3 class="tc-eyebrow mb-4">Servicios del sistema que puedes atender</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <% var _lista47 = (servicios || []); if (_lista47.length) { _lista47.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista47.length - 1 }; var _finDeLista = _lista47.length - 1; %>
+          <div class="rounded-xl border border-outline-variant/15 p-6 bg-surface-container">
+            <span
+              class="material-symbols-outlined text-primary text-3xl mb-3 block"
+              >content_cut</span
+            >
+            <h4 class="font-headline text-lg text-on-surface mb-1">
+              <%= servicio.nombre %>
+            </h4>
+            <p class="text-xs text-on-surface-variant mb-4">
+              <%= servicio.descripcion %>
+            </p>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-on-surface-variant flex items-center gap-1"
+                ><span class="material-symbols-outlined text-base">schedule</span
+                ><%= servicio.duracion %></span
+              >
+              <span class="font-headline text-primary"
+                >$<%= Number(Number(servicio.precio) || 0).toFixed(1) %> COP</span
+              >
+            </div>
+          </div>
+          <% }); } %>
+        </div>
+      </section>
+
+      
+      <% if (mis_servicios) { %>
+      <section>
+        <h3 class="tc-eyebrow mb-4">Tus servicios propios</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <% var _lista48 = (mis_servicios || []); if (_lista48.length) { _lista48.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista48.length - 1 }; var _finDeLista = _lista48.length - 1; %>
+          <div class="tc-glass tc-glass--hover rounded-xl p-6">
+            <span
+              class="material-symbols-outlined tc-gold-text text-3xl mb-3 block"
+              >workspace_premium</span
+            >
+            <h4 class="font-headline text-lg text-on-surface mb-1">
+              <%= servicio.nombre %>
+            </h4>
+            <p class="text-xs text-on-surface-variant mb-4">
+              <%= ((servicio.descripcion === undefined || servicio.descripcion === null || servicio.descripcion === '') ? "Sin descripción." : servicio.descripcion) %>
+            </p>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-on-surface-variant flex items-center gap-1"
+                ><span class="material-symbols-outlined text-base">schedule</span
+                ><%= servicio.duracion %></span
+              >
+              <span class="font-headline text-primary"
+                >$<%= Number(Number(servicio.precio) || 0).toFixed(1) %> COP</span
+              >
+            </div>
+          </div>
+          <% }); } %>
+        </div>
+      </section>
+      <% } %>
+
+      
+      <section class="tc-form">
+        <h3 class="tc-form__title">Solicitar un servicio nuevo</h3>
+        <p class="mb-6 text-sm text-on-surface-variant">
+          Cuéntale al administrador qué servicio quieres ofrecer. Él lo revisa y,
+          si lo aprueba, aparece en tu lista y en el catálogo de reservas.
+        </p>
+        <form method="post" class="tc-form__grid">
+          
+          <input type="hidden" name="accion" value="solicitar_servicio" />
+
+          <label class="tc-field tc-field--full">
+            <input
+              required
+              maxlength="100"
+              name="nombre"
+              placeholder=" "
+              class="tc-field__input"
+            />
+            <span class="tc-field__label">Nombre del servicio</span>
+          </label>
+
+          <label class="tc-field tc-field--full">
+            <textarea
+              name="descripcion"
+              maxlength="300"
+              rows="2"
+              placeholder=" "
+              class="tc-field__input"
+            ></textarea>
+            <span class="tc-field__label">Descripción (opcional)</span>
+          </label>
+
+          <label class="tc-field tc-field--always">
+            <select name="minutos" class="tc-field__input">
+              <% var _lista49 = (duraciones || []); if (_lista49.length) { _lista49.forEach(function (m, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista49.length - 1 }; var _finDeLista = _lista49.length - 1; %>
+              <option value="<%= m %>" <% if (m == 30) { %>selected<% } %>>
+                <%= m %> minutos
+              </option>
+              <% }); } %>
+            </select>
+            <span class="tc-field__label">Duración</span>
+          </label>
+
+          <label class="tc-field">
+            <input
+              required
+              type="number"
+              min="0"
+              step="1000"
+              name="precio"
+              placeholder=" "
+              class="tc-field__input"
+            />
+            <span class="tc-field__label">Precio (COP)</span>
+          </label>
+
+          <div class="tc-form__actions tc-field--full">
+            <button class="tc-btn tc-btn--gold" type="submit">
+              <span class="material-symbols-outlined text-[18px]">send</span>
+              Enviar solicitud
+            </button>
+          </div>
+        </form>
+      </section>
+
+      
+      <section>
+        <h3 class="tc-eyebrow mb-4">
+          Mis solicitudes
+          <% if (solicitudes_pendientes) { %>
+          <span class="tc-chip"><%= solicitudes_pendientes %> pendientes</span>
+          <% } %>
+        </h3>
+        <div class="tc-glass overflow-hidden rounded-2xl border border-outline-variant/20">
+          <div class="table-responsive">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr
+                  class="border-b border-outline-variant/30 text-xs uppercase tracking-wider text-on-surface-variant"
+                >
+                  <th class="px-5 py-4 font-semibold">Servicio</th>
+                  <th class="px-5 py-4 font-semibold">Duración</th>
+                  <th class="px-5 py-4 font-semibold">Precio</th>
+                  <th class="px-5 py-4 font-semibold">Estado</th>
+                  <th class="px-5 py-4 font-semibold">Nota del Admin</th>
+                  <th class="px-5 py-4 text-right font-semibold">Fecha</th>
+                  <th class="px-5 py-4"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% var _lista50 = (solicitudes || []); if (_lista50.length) { _lista50.forEach(function (s, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista50.length - 1 }; var _finDeLista = _lista50.length - 1; %>
+                <tr class="border-b border-outline-variant/10 last:border-0">
+                  <td class="px-5 py-4 font-medium text-on-surface">
+                    <%= s.nombre %>
+                  </td>
+                  <td class="px-5 py-4 text-on-surface-variant">
+                    <%= s.duracion %>
+                  </td>
+                  <td class="px-5 py-4 text-on-surface-variant">
+                    $<%= Number(Number(s.precio) || 0).toFixed(1) %>
+                  </td>
+                  <td class="px-5 py-4">
+                    <% if (s.estado == "pendiente") { %>
+                    <span class="tc-badge tc-badge--wait">
+                      <span class="material-symbols-outlined text-sm">hourglass_top</span>Pendiente
+                    </span>
+                    <% } else if (s.estado == "aprobada") { %>
+                    <span class="tc-badge tc-badge--ok">
+                      <span class="material-symbols-outlined text-sm">check_circle</span>Aprobada
+                    </span>
+                    <% } else { %>
+                    <span class="tc-badge tc-badge--no">
+                      <span class="material-symbols-outlined text-sm">cancel</span>Rechazada
+                    </span>
+                    <% } %>
+                  </td>
+                  <td class="px-5 py-4 text-xs text-on-surface-variant">
+                    <%= ((s.nota_admin === undefined || s.nota_admin === null || s.nota_admin === '') ? "—" : s.nota_admin) %>
+                  </td>
+                  <td
+                    class="px-5 py-4 text-right text-xs text-on-surface-variant"
+                  >
+                    <%= fmtFecha(s.creada, "d/m/Y H:i") %>
+                  </td>
+                  <td class="px-5 py-4 text-right">
+                    <% if (s.estado == "pendiente") { %>
+                    <form method="post" class="inline">
+                      
+                      <input
+                        type="hidden"
+                        name="accion"
+                        value="cancelar_solicitud"
+                      />
+                      <input
+                        type="hidden"
+                        name="solicitud_id"
+                        value="<%= s.id %>"
+                      />
+                      <button
+                        type="submit"
+                        class="tc-btn tc-btn--ghost tc-btn--sm"
+                      >
+                        Cancelar
+                      </button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }); } else { %>
+                <tr>
+                  <td
+                    colspan="7"
+                    class="px-5 py-10 text-center text-on-surface-variant"
+                  >
+                    Todavía no has enviado solicitudes.
+                  </td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+    <% } %>
+
+    
+    <% if (pestana == "notificaciones") { %>
+    <section class="bg-surface-container-low rounded-xl p-8 ambient-glow max-w-lg">
+      <h2 class="font-headline text-2xl text-primary-container mb-6">
+        Cómo quieres que te avisemos
+      </h2>
+      <form method="post" class="space-y-6">
+        
+        <input type="hidden" name="accion" value="notificaciones" />
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="correo"
+            <% if (notificaciones.correo) { %>checked<% } %>
+            class="mt-1 h-5 w-5 rounded border-outline-variant/40 text-primary focus:ring-primary"
+          />
+          <span>
+            <span class="block text-sm font-semibold text-on-surface"
+              >Avisos por correo</span
+            >
+            <span class="block text-xs text-on-surface-variant"
+              >Nuevas citas, cambios de agenda y reseñas.</span
+            >
+          </span>
+        </label>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="whatsapp"
+            <% if (notificaciones.whatsapp) { %>checked<% } %>
+            class="mt-1 h-5 w-5 rounded border-outline-variant/40 text-primary focus:ring-primary"
+          />
+          <span>
+            <span class="block text-sm font-semibold text-on-surface"
+              >Avisos por WhatsApp</span
+            >
+            <span class="block text-xs text-on-surface-variant"
+              >Recordatorios rápidos al teléfono registrado.</span
+            >
+          </span>
+        </label>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="sms"
+            <% if (notificaciones.sms) { %>checked<% } %>
+            class="mt-1 h-5 w-5 rounded border-outline-variant/40 text-primary focus:ring-primary"
+          />
+          <span>
+            <span class="block text-sm font-semibold text-on-surface">Avisos por SMS</span>
+            <span class="block text-xs text-on-surface-variant"
+              >Solo para cambios de última hora.</span
+            >
+          </span>
+        </label>
+        <div>
+          <label
+            class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold block mb-1"
+            >Recordarme con anticipación</label
+          >
+          <select
+            name="anticipacion"
+            class="w-full bg-surface-container-high border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"
+          >
+            <option value="1" <% if (notificaciones.anticipacion == 1) { %>selected<% } %>>1 hora antes</option>
+            <option value="3" <% if (notificaciones.anticipacion == 3) { %>selected<% } %>>3 horas antes</option>
+            <option value="12" <% if (notificaciones.anticipacion == 12) { %>selected<% } %>>12 horas antes</option>
+            <option value="24" <% if (notificaciones.anticipacion == 24) { %>selected<% } %>>1 día antes</option>
+            <option value="48" <% if (notificaciones.anticipacion == 48) { %>selected<% } %>>2 días antes</option>
+          </select>
+        </div>
+        <button
+          type="submit"
+          class="w-full py-3 rounded-md border border-primary/40 text-primary hover:bg-primary/5 transition-colors text-sm font-semibold uppercase tracking-widest active:scale-95"
+        >
+          Guardar preferencias
+        </button>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-outline-variant/10">
+        <p class="text-sm text-on-surface-variant mb-4">Tu actividad reciente:</p>
+        <ul class="divide-y divide-outline-variant/10">
+          <% var _lista51 = (ingresos || []); if (_lista51.length) { _lista51.forEach(function (ingreso, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista51.length - 1 }; var _finDeLista = _lista51.length - 1; %>
+          <li class="py-3 flex items-center justify-between gap-4 text-sm">
+            <span class="flex items-center gap-3 text-on-surface">
+              <span class="material-symbols-outlined text-primary text-base"
+                >login</span
+              ><%= fmtFecha(ingreso.fecha, "d M Y H:i") %>
+            </span>
+            <span class="text-on-surface-variant text-xs"
+              ><%= ingreso.rol %><% if (ingreso.ip) { %> · <%= ingreso.ip %><% } %></span
+            >
+          </li>
+          <% }); } else { %>
+          <li class="py-3 text-sm text-on-surface-variant">Sin registros todavía.</li>
+          <% } %>
+        </ul>
+      </div>
+    </section>
+    <% } %>
+
+    <div>
+      <a
+        href="/barbero"
+        class="inline-flex items-center gap-2 text-on-surface-variant text-sm uppercase tracking-widest hover:text-primary transition-colors active:scale-95"
+        ><span class="material-symbols-outlined text-base">arrow_back</span
+        >Volver al dashboard</a
+      >
+    </div>
+  </div>
+</main>
+

@@ -4,16 +4,12 @@ const productoController = require('../controllers/producto.controller');
 const verificarToken = require('../middleware/auth');
 const exigirRol = require('../middleware/roles');
 
+router.get('/', productoController.find);
+router.get('/:id', productoController.findOne);
+
 router.use(verificarToken);
-
-router.get('/', productoController.listarTodos);
-
-router.get('/:id', productoController.listarUno);
-
-router.post('/', exigirRol('Admin'), productoController.crear);
-
-router.put('/:id', exigirRol('Admin'), productoController.actualizar);
-
-router.delete('/:id', exigirRol('Admin'), productoController.eliminar);
+router.post('/', exigirRol('Admin'), productoController.insertOne);
+router.put('/:id', exigirRol('Admin'), productoController.findOneAndUpdate);
+router.delete('/:id', exigirRol('Admin'), productoController.findOneAndDelete);
 
 module.exports = router;

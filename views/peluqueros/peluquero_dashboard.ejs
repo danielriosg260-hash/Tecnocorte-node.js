@@ -1,88 +1,203 @@
-<% // Layout: dashboard %>
-<%- include('../partials/peluquero-sidebar', { active: 'inicio' }) %>
+<%# Título: TecnoCorte - Panel
+de Barbero %>
+<link rel="stylesheet" href="/css/peluqueros/peluquero_dashboard.css" />
+ <%- include('../partials/peluquero-sidebar', { active: "inicio" }) %>
 <main class="flex-1 md:ml-72 flex flex-col min-h-screen relative bg-background">
-  <header class="glass-header sticky top-0 z-40 flex justify-between items-center w-full px-6 md:px-12 py-4">
-    <a class="inline-flex md:hidden" href="/barbero" aria-label="TecnoCorte"><%- include('../partials/logo') %></a>
-    <div class="hidden md:block"></div>
-    <div class="flex items-center gap-3">
-      <a href="/" class="inline-flex items-center gap-2 rounded-full border border-outline-variant/40 px-3 py-2 text-xs font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:border-primary hover:text-primary" title="Volver al sitio">
-        <span class="material-symbols-outlined text-base">home</span>
-        <span class="hidden sm:inline">Volver al sitio</span>
-      </a>
-      <div class="flex items-center gap-6">
-      <a href="/barbero/notificaciones" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Notificaciones"><span class="material-symbols-outlined">notifications</span></a>
-      <a href="/barbero/perfil" class="text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80" title="Mi perfil"><span class="material-symbols-outlined">account_circle</span></a>
-      </div>
-    </div>
-  </header>
+  <%- include('../partials/panel-header') %>
 
   <div class="p-6 md:p-12 space-y-12 max-w-7xl mx-auto w-full">
+    
+    <% if (!(peluqueria)) { %>
+    <div
+      class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-primary-container/10 border border-primary/30 rounded-xl p-5"
+    >
+      <div class="flex items-start gap-3">
+        <span
+          class="material-symbols-outlined text-primary mt-0.5"
+          style="font-variation-settings: &quot;FILL&quot; 1"
+          >storefront</span
+        >
+        <div>
+          <p
+            class="font-label uppercase tracking-widest text-primary text-sm font-bold mb-1"
+          >
+            Aún no tienes una peluquería asignada
+          </p>
+          <p class="font-body text-on-surface-variant text-sm">
+            Tu barbería la crea o asigna el administrador. Pídele que te cree
+            una o que te agregue a una existente para aparecer en el directorio
+            y poder publicar tus fotos.
+          </p>
+        </div>
+      </div>
+    </div>
+    <% } %>
 
+    
     <!-- Saludo + Calificación -->
-    <section class="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-surface-container-low pb-8">
+    <section
+      class="tc-barber-welcome flex flex-col md:flex-row justify-between items-end gap-6 border-b border-surface-container-low pb-8"
+    >
       <div>
-        <h2 class="font-headline text-4xl md:text-5xl text-on-surface tracking-tight mb-2">
-          Hola, <span class="text-primary italic"><%= logueado.nombre %>.</span>
+        <h2
+          class="font-headline text-4xl md:text-5xl text-on-surface tracking-tight mb-2"
+        >
+          Hola,
+          <span class="text-primary italic"
+            ><%= logueado.nombre %>.</span
+          >
         </h2>
-        <p class="font-body text-body-lg text-on-surface-variant">Resumen de tu actividad como barbero.</p>
+        <p class="font-body text-lg text-on-surface-variant">
+          Resumen de tu actividad como barbero.
+        </p>
       </div>
       <div class="text-right">
-        <p class="font-label uppercase tracking-widest text-label-sm text-on-surface-variant mb-1">Calificación</p>
+        <p
+          class="font-label uppercase tracking-widest text-label-sm text-on-surface-variant mb-1"
+        >
+          Calificación
+        </p>
         <div class="flex items-center justify-end gap-2">
-          <span class="font-headline text-3xl text-primary font-bold"><%= promedio || '-' %></span>
-          <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+          <span class="font-headline text-3xl text-primary font-bold"
+            ><%= ((promedio === undefined || promedio === null || promedio === '') ? "-" : promedio) %></span
+          >
+          <span
+            class="material-symbols-outlined text-primary"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >star</span
+          >
         </div>
-        <p class="text-xs text-on-surface-variant mt-1"><%= total_calificaciones || 0 %> reseña<%= (total_calificaciones && total_calificaciones !== 1) ? 's' : '' %></p>
+        <p class="text-xs text-on-surface-variant mt-1">
+          <%= total_calificaciones %> reseña<%= (Number(total_calificaciones) === 1 ? '' : 's') %>
+        </p>
       </div>
     </section>
 
+    
     <!-- Métricas Bento Grid -->
     <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Citas Hoy -->
-      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
-        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
-          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">today</span>
+      <div
+        class="tc-barber-stat bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group"
+      >
+        <div
+          class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500"
+        >
+          <span
+            class="material-symbols-outlined text-[6rem]"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >today</span
+          >
         </div>
-        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Citas Hoy</h3>
-        <p class="font-headline text-3xl text-on-surface font-bold"><%= (citas_hoy && citas_hoy.length) || 0 %></p>
+        <h3
+          class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3"
+        >
+          Citas Hoy
+        </h3>
+        <p class="font-headline text-3xl text-on-surface font-bold">
+          <%= (citas_hoy || []).length %>
+        </p>
       </div>
       <!-- Ingresos Hoy -->
-      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
-        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
-          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">payments</span>
+      <div
+        class="tc-barber-stat bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group"
+      >
+        <div
+          class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500"
+        >
+          <span
+            class="material-symbols-outlined text-[6rem]"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >payments</span
+          >
         </div>
-        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Ingresos Hoy</h3>
-         <p class="font-headline text-2xl text-on-surface font-bold"><%= fmtMoneda(ingresos_hoy || 0) %></p>
+        <h3
+          class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3"
+        >
+          Ingresos Hoy
+        </h3>
+        <p class="font-headline text-2xl text-on-surface font-bold">
+          $<%= Math.round(Number(ingresos_hoy) || 0) %>
+        </p>
         <p class="text-xs text-on-surface-variant">COP</p>
       </div>
       <!-- Ingresos Totales -->
-      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
-        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
-          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+      <div
+        class="tc-barber-stat bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group"
+      >
+        <div
+          class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500"
+        >
+          <span
+            class="material-symbols-outlined text-[6rem]"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >account_balance_wallet</span
+          >
         </div>
-        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Ingresos Totales</h3>
-         <p class="font-headline text-2xl text-on-surface font-bold"><%= fmtMoneda(ingresos_total || 0) %></p>
-        <p class="text-xs text-on-surface-variant">COP · <%= (citas_completadas && citas_completadas.length) || 0 %> servicios</p>
+        <h3
+          class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3"
+        >
+          Ingresos Totales
+        </h3>
+        <p class="font-headline text-2xl text-on-surface font-bold">
+          $<%= Math.round(Number(ingresos_total) || 0) %>
+        </p>
+        <p class="text-xs text-on-surface-variant">
+          COP · <%= (citas_completadas || []).length %> servicios
+        </p>
       </div>
       <!-- Total Citas -->
-      <div class="bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group">
-        <div class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500">
-          <span class="material-symbols-outlined text-[6rem]" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+      <div
+        class="tc-barber-stat bg-surface-container-low p-6 rounded-xl ambient-glow relative overflow-hidden group"
+      >
+        <div
+          class="absolute -right-4 -top-4 text-primary/5 group-hover:text-primary/10 transition-colors duration-500"
+        >
+          <span
+            class="material-symbols-outlined text-[6rem]"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >calendar_month</span
+          >
         </div>
-        <h3 class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3">Total Citas</h3>
-        <p class="font-headline text-3xl text-on-surface font-bold"><%= total_citas || 0 %></p>
+        <h3
+          class="font-label uppercase tracking-widest text-[0.65rem] text-on-surface-variant mb-3"
+        >
+          Total Citas
+        </h3>
+        <p class="font-headline text-3xl text-on-surface font-bold">
+          <%= total_citas %>
+        </p>
         <div class="flex gap-3 mt-2 text-xs">
-          <span class="text-primary"><%= (citas_pendientes && citas_pendientes.length) || 0 %> pend.</span>
-          <span class="text-green-400"><%= (citas_completadas && citas_completadas.length) || 0 %> hechas</span>
-          <span class="text-error"><%= (citas_canceladas && citas_canceladas.length) || 0 %> canc.</span>
+          <span class="text-primary"><%= (citas_pendientes || []).length %> pend.</span>
+          <span class="text-green-400"
+            ><%= (citas_completadas || []).length %> hechas</span
+          >
+          <span class="text-error"><%= (citas_canceladas || []).length %> canc.</span>
         </div>
       </div>
     </section>
 
-    <% if (proxima) { %>
-    <section class="rounded-xl border border-primary/25 bg-primary/5 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-      <div><p class="font-label uppercase tracking-widest text-xs text-primary mb-2">Próxima cita</p><h3 class="font-headline text-2xl text-on-surface"><%= proxima.servicio %></h3><p class="text-on-surface-variant mt-2"><%= proxima.cliente ? `${proxima.cliente.nombre} ${proxima.cliente.apellido || ''}` : 'Cliente' %> · <%= fmtFecha(proxima.fecha, 'dd/MM/yyyy') %> · <%= proxima.hora %></p></div>
-      <a href="/barbero/citas/<%= proxima.id %>/editar" class="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-on-primary"><span class="material-symbols-outlined text-base">edit_calendar</span>Gestionar cita</a>
+    <section class="tc-barber-quick-actions">
+      <div>
+        <p class="font-label text-[0.65rem] uppercase tracking-widest text-primary">Accesos rápidos</p>
+        <h3 class="mt-1 font-headline text-2xl text-on-surface">Administra tu espacio</h3>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="/barbero/peluqueria" class="tc-barber-action"><span class="material-symbols-outlined">storefront</span> Mi peluquería</a>
+        <a href="/barbero/galeria" class="tc-barber-action"><span class="material-symbols-outlined">photo_library</span> Galería</a>
+        <a href="/barbero/configuracion" class="tc-barber-action"><span class="material-symbols-outlined">settings</span> Configuración</a>
+      </div>
+    </section>
+
+    <% if (proxima_cita) { %>
+    <section class="tc-next-appointment">
+      <div class="tc-next-appointment__icon"><span class="material-symbols-outlined">event_upcoming</span></div>
+      <div class="min-w-0 flex-1">
+        <p class="font-label text-[0.65rem] uppercase tracking-widest text-primary">Próxima cita</p>
+        <h3 class="mt-1 truncate font-headline text-xl text-on-surface"><%= proxima_cita.servicio %></h3>
+        <p class="mt-1 text-sm text-on-surface-variant"><%= proxima_cita.cliente.nombre %> <%= proxima_cita.cliente.apellido %> · <%= fmtFecha(proxima_cita.fecha, "d/m/Y") %> a las <%= fmtHora(proxima_cita.hora) %></p>
+      </div>
+      <a href="#citas" class="tc-barber-action shrink-0">Ver agenda <span class="material-symbols-outlined">arrow_downward</span></a>
     </section>
     <% } %>
 
@@ -91,77 +206,132 @@
       <div class="w-1 h-1 rounded-full bg-primary-container"></div>
     </div>
 
+    
     <!-- Citas con botones de estado -->
-    <section>
+    <section id="citas">
       <div class="flex justify-between items-end mb-8">
         <div>
-          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Mis Citas</h3>
-          <p class="font-body text-on-surface-variant">Gestiona el estado de cada cita.</p>
+          <h3
+            class="font-headline text-3xl text-on-surface tracking-tight mb-2"
+          >
+            Mis Citas
+          </h3>
+          <p class="font-body text-on-surface-variant">
+            Gestiona el estado de cada cita.
+          </p>
         </div>
-        <a class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2" href="/barbero/nueva-cita">
+        <a
+          class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2"
+          href="/barbero/nueva-cita"
+        >
           Nueva Cita <span class="material-symbols-outlined text-sm">add</span>
         </a>
       </div>
+      <div class="mb-5 flex flex-wrap items-center gap-3">
+        <label for="barbero-filtro-fecha" class="text-xs uppercase tracking-widest text-on-surface-variant">Ver agenda del día</label>
+        <input id="barbero-filtro-fecha" type="date" class="rounded-lg border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-sm text-on-surface" aria-label="Filtrar citas por fecha" />
+        <button id="barbero-limpiar-fecha" type="button" class="text-xs font-bold uppercase tracking-widest text-primary">Ver todas</button>
+      </div>
 
       <div class="space-y-4">
-        <% if (citas && citas.length) { %>
-          <% citas.forEach(function(cita) { %>
-        <div class="bg-surface-container-low rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ambient-glow">
+        <% var _lista56 = (citas || []); if (_lista56.length) { _lista56.forEach(function (cita, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista56.length - 1 }; var _finDeLista = _lista56.length - 1; %>
+        <div
+          class="bg-surface-container-low rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ambient-glow"
+          data-cita-fecha="<%= fmtFecha(cita.fecha, "Y-m-d") %>"
+        >
           <div class="flex items-start gap-4">
-            <div class="flex flex-col items-center justify-center bg-surface-container-highest p-3 rounded-lg min-w-[70px]">
-              <span class="text-primary-container text-xs font-bold uppercase"><%= fmtFecha(cita.fecha, 'MMM') %></span>
-              <span class="font-headline text-2xl text-on-surface"><%= fmtFecha(cita.fecha, 'dd') %></span>
+            <div
+              class="flex flex-col items-center justify-center bg-surface-container-highest p-3 rounded-lg min-w-[70px]"
+            >
+              <span class="text-primary-container text-xs font-bold uppercase"
+                ><%= fmtFecha(cita.fecha, "M") %></span
+              >
+              <span class="font-headline text-2xl text-on-surface"
+                ><%= fmtFecha(cita.fecha, "d") %></span
+              >
             </div>
             <div>
-              <h4 class="font-body text-lg text-on-surface font-semibold"><%= cita.servicio %></h4>
-              <p class="text-on-surface-variant text-sm flex items-center gap-2">
-                <span class="material-symbols-outlined text-[14px]">person</span><%= (cita.cliente && cita.cliente.nombre) || '' %> <%= (cita.cliente && cita.cliente.apellido) || '' %>
+              <h4 class="font-body text-lg text-on-surface font-semibold">
+                <%= cita.servicio %>
+              </h4>
+              <p
+                class="text-on-surface-variant text-sm flex items-center gap-2"
+              >
+                <span class="material-symbols-outlined text-[14px]">person</span
+                ><%= cita.cliente.nombre %> <%= cita.cliente.apellido %>
               </p>
-              <p class="text-on-surface-variant text-sm flex items-center gap-2">
-                <span class="material-symbols-outlined text-[14px]">schedule</span><%= fmtFecha(cita.hora, 'HH:mm') %> · <%= (cita.peluqueria && cita.peluqueria.nombre) || '' %>
+              <p
+                class="text-on-surface-variant text-sm flex items-center gap-2"
+              >
+                <span class="material-symbols-outlined text-[14px]"
+                  >schedule</span
+                ><%= fmtHora(cita.hora) %> · <%= cita.peluqueria.nombre %>
               </p>
             </div>
           </div>
 
           <div class="flex items-center gap-3">
-            <% if (cita.estado === 'Pendiente' || cita.estado === 'Confirmada') { %>
-            <a href="/barbero/citas/<%= cita.id %>/editar" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
-              <span class="material-symbols-outlined text-[14px]">edit_calendar</span> Modificar
-            </a>
-            <% } %>
-            <% if (cita.estado === 'Pendiente' || cita.estado === 'Confirmada') { %>
-            <form method="post" action="/barbero/citas/<%= cita.id %>/estado" class="flex items-center gap-2">
-              <!-- csrf: auth JWT -->
-              <input type="hidden" name="estado" value="Completada">
-              <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors active:scale-95">
-                <span class="material-symbols-outlined text-[14px]">check_circle</span> Completar
+            <% if (cita.estado == 'Pendiente' || cita.estado == 'Confirmada') { %>
+            <form
+              method="post"
+              action="<%= `/barbero/citas/${cita.id}/estado` %>"
+              class="flex items-center gap-2"
+            >
+              
+              <input type="hidden" name="estado" value="Completada" />
+              <button
+                type="submit"
+                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors active:scale-95"
+              >
+                <span class="material-symbols-outlined text-[14px]"
+                  >check_circle</span
+                >
+                Completar
               </button>
             </form>
-            <form method="post" action="/barbero/citas/<%= cita.id %>/estado" class="inline">
-              <!-- csrf: auth JWT -->
-              <input type="hidden" name="estado" value="Cancelada">
-              <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors active:scale-95" data-confirm="¿Cancelar esta cita?">
-                <span class="material-symbols-outlined text-[14px]">cancel</span> Cancelar
+            <form
+              method="post"
+              action="<%= `/barbero/citas/${cita.id}/estado` %>"
+              class="inline"
+            >
+              
+              <input type="hidden" name="estado" value="Cancelada" />
+              <button
+                type="submit"
+                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors active:scale-95"
+                data-confirm="¿Cancelar esta cita?"
+              >
+                <span class="material-symbols-outlined text-[14px]"
+                  >cancel</span
+                >
+                Cancelar
               </button>
             </form>
             <% } %>
 
-            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest
-              <% if (cita.estado === 'Completada') { %>bg-green-500/10 text-green-400 border border-green-500/20
-              <% } else if (cita.estado === 'Confirmada') { %>bg-primary/10 text-primary border border-primary/20
-              <% } else if (cita.estado === 'Cancelada') { %>bg-error/10 text-error border border-error/20
-              <% } else { %>bg-secondary-container/20 text-secondary border border-secondary-container/30<% } %>">
+            <span
+              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest <% if (cita.estado == 'Completada') { %>bg-green-500/10 text-green-400 border border-green-500/20 <% } else if (cita.estado == 'Confirmada') { %>bg-primary/10 text-primary border border-primary/20 <% } else if (cita.estado == 'Cancelada') { %>bg-error/10 text-error border border-error/20 <% } else { %>bg-secondary-container/20 text-secondary border border-secondary-container/30<% } %>"
+            >
               <%= cita.estado %>
             </span>
           </div>
         </div>
-        <% }); %>
-        <% } else { %>
-        <div class="bg-surface-container-low rounded-xl p-12 text-center ambient-glow">
-          <span class="material-symbols-outlined text-5xl text-primary/30 mb-4">event_busy</span>
-          <p class="font-body text-on-surface-variant text-lg">No tienes citas registradas.</p>
-          <a href="/barbero/nueva-cita" class="inline-flex items-center gap-2 mt-4 text-primary font-bold uppercase tracking-widest text-sm hover:opacity-80">
-            <span class="material-symbols-outlined text-base">add</span> Agendar primera cita
+        <% }); } else { %>
+        <div
+          class="bg-surface-container-low rounded-xl p-12 text-center ambient-glow"
+        >
+          <span class="material-symbols-outlined text-5xl text-primary/30 mb-4"
+            >event_busy</span
+          >
+          <p class="font-body text-on-surface-variant text-lg">
+            No tienes citas registradas.
+          </p>
+          <a
+            href="/barbero/nueva-cita"
+            class="inline-flex items-center gap-2 mt-4 text-primary font-bold uppercase tracking-widest text-sm hover:opacity-80"
+          >
+            <span class="material-symbols-outlined text-base">add</span> Agendar
+            primera cita
           </a>
         </div>
         <% } %>
@@ -173,118 +343,145 @@
       <div class="w-1 h-1 rounded-full bg-primary-container"></div>
     </div>
 
+    
     <!-- Reseñas recientes -->
-    <% if (calificaciones && calificaciones.length) { %>
+    <% if (calificaciones && config.mostrar_calificaciones) { %>
     <section>
       <div class="flex justify-between items-end mb-8">
         <div>
-          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Reseñas de Clientes</h3>
+          <h3
+            class="font-headline text-3xl text-on-surface tracking-tight mb-2"
+          >
+            Reseñas de Clientes
+          </h3>
           <p class="font-body text-on-surface-variant">Lo que dicen de ti.</p>
         </div>
       </div>
       <div class="space-y-4">
-        <% calificaciones.forEach(function(cal) { %>
+        <% var _lista57 = (calificaciones || []); if (_lista57.length) { _lista57.forEach(function (cal, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista57.length - 1 }; var _finDeLista = _lista57.length - 1; %>
         <div class="bg-surface-container-low rounded-xl p-6 ambient-glow">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center">
-                <span class="material-symbols-outlined text-primary text-lg">person</span>
+              <div
+                class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center"
+              >
+                <span class="material-symbols-outlined text-primary text-lg"
+                  >person</span
+                >
               </div>
               <div>
-                <p class="font-body text-on-surface font-semibold"><%= (cal.cliente && cal.cliente.nombre) || '' %> <%= (cal.cliente && cal.cliente.apellido) || '' %></p>
-                <p class="text-xs text-on-surface-variant"><%= fmtFecha(cal.fecha, 'dd/MM/yyyy') %></p>
+                <p class="font-body text-on-surface font-semibold">
+                  <%= cal.cliente.nombre %> <%= cal.cliente.apellido %>
+                </p>
+                <p class="text-xs text-on-surface-variant">
+                  <%= fmtFecha(cal.fecha, "d/m/Y") %>
+                </p>
               </div>
             </div>
             <div class="flex items-center gap-1">
-              <% for (var i = 1; i <= 5; i++) { %>
-                <% if (i <= (cal.puntuacion || 0)) { %>
-                <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                <% } else { %>
-                <span class="material-symbols-outlined text-primary/30 text-sm">star</span>
-                <% } %>
-              <% } %>
-              <span class="font-bold text-primary text-sm ml-1"><%= cal.puntuacion || 0 %></span>
+              <% var _lista58 = Array.from(String("12345")); if (_lista58.length) { _lista58.forEach(function (i, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista58.length - 1 }; var _finDeLista = _lista58.length - 1; %> <% if ((indice + 1) <= cal.puntuacion) { %>
+              <span
+                class="material-symbols-outlined text-primary text-sm"
+                style="font-variation-settings: &quot;FILL&quot; 1"
+                >star</span
+              >
+              <% } else { %>
+              <span class="material-symbols-outlined text-primary/30 text-sm"
+                >star</span
+              >
+              <% } %> <% }); } %>
+              <span class="font-bold text-primary text-sm ml-1"
+                ><%= cal.puntuacion %></span
+              >
             </div>
           </div>
           <% if (cal.comentario) { %>
-          <p class="text-on-surface-variant text-sm mt-2 border-t border-outline-variant/10 pt-3"><%= cal.comentario %></p>
+          <p
+            class="text-on-surface-variant text-sm mt-2 border-t border-outline-variant/10 pt-3"
+          >
+            <%= cal.comentario %>
+          </p>
           <% } %>
         </div>
-        <% }); %>
+        <% }); } %>
       </div>
     </section>
     <% } %>
 
-    <!-- Portfolio Gallery -->
+    
+    <!-- Portfolio Gallery (fotos subidas por el barbero) -->
     <section>
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-5 mb-8">
-        <div>
-          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Tu Obra Reciente</h3>
-          <p class="font-body text-on-surface-variant">Sube hasta 6 imágenes por vez. Se conservarán tus últimas 24 obras.</p>
-        </div>
-        <form method="post" action="/barbero/obras" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
-          <input type="file" name="obras" accept="image/jpeg,image/png,image/webp" multiple required class="max-w-full text-xs text-on-surface-variant file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-bold file:text-on-primary" />
-          <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-on-primary hover:opacity-90"><span class="material-symbols-outlined text-base">add_a_photo</span>Subir obras</button>
-        </form>
-      </div>
-      <% if (error) { %><p class="mb-5 rounded-lg border border-error/40 bg-error-container/20 p-3 text-sm text-error"><%= error %></p><% } %>
-      <% if (portafolio && portafolio.length) { %>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <% portafolio.slice().reverse().forEach(function(obra) { %>
-        <article class="aspect-[3/4] rounded-lg overflow-hidden relative group bg-surface-container-low border border-outline-variant/20">
-          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="<%= obra.url %>" alt="Obra de <%= logueado.nombre %>" loading="lazy" />
-          <form method="post" action="/barbero/obras/<%= encodeURIComponent(obra.public_id) %>/eliminar" class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-full bg-error/90 text-on-error" aria-label="Eliminar obra"><span class="material-symbols-outlined text-base">delete</span></button>
-          </form>
-        </article>
-        <% }); %>
-      </div>
-      <% } else { %>
-      <div class="rounded-xl border border-dashed border-outline-variant/30 bg-surface-container-low p-12 text-center"><span class="material-symbols-outlined text-5xl text-primary/50">photo_library</span><p class="mt-3 text-on-surface-variant">Todavía no has subido obras.</p></div>
-      <% } %>
-    </section>
-    <section class="hidden">
       <div class="flex justify-between items-end mb-8">
         <div>
-          <h3 class="font-headline text-3xl text-on-surface tracking-tight mb-2">Tu Obra Reciente</h3>
-          <p class="font-body text-on-surface-variant">Últimos cortes añadidos al portafolio.</p>
+          <h3
+            class="font-headline text-3xl text-on-surface tracking-tight mb-2"
+          >
+            Tu Obra Reciente
+          </h3>
+          <p class="font-body text-on-surface-variant">
+            Últimas fotos añadidas a tu galería.
+          </p>
         </div>
-        <button class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2">
+        <a
+          class="text-primary font-label uppercase tracking-widest text-sm hover:opacity-80 transition-opacity flex items-center gap-2"
+          href="/barbero/galeria"
+        >
           Galería
           <span class="material-symbols-outlined text-sm">add_a_photo</span>
-        </button>
+        </a>
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer">
-          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            data-alt="Corte degradado"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfXImOoRddLvLwFRu5vu6rLeMGEAsABU4uP6YViiSFkWcOl8NlztzXWJzqtWmiInW-_BIycGJ6_tQySdvTQutzDXklQ--uTO4AbMkUPPhS9UGka7EHrT8QrXfOgmRqRMfGVMEnHqf1_0apPdzDaBs0vHHsf_0Z-zkKpIjRyYL76k7oCgZCjYSsQxBVmOu0vnnqgOoSEml4Zw8kcxIjFnRKCuuHArzA-OOMTi-JsdXK9RdcvRBk-ktaSU9a71aL5sePtBHbqh2MN5pS" />
-          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-            <span class="font-label uppercase tracking-widest text-xs text-primary">Degradado</span>
+        <% var _lista59 = ((fotos || []).slice(0, 3)); if (_lista59.length) { _lista59.forEach(function (foto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista59.length - 1 }; var _finDeLista = _lista59.length - 1; %>
+        <div
+          class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer"
+        >
+          <img
+            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            alt="<%= ((foto.descripcion === undefined || foto.descripcion === null || foto.descripcion === '') ? "Corte reciente" : foto.descripcion) %>"
+            src="<%= foto.url %>"
+          />
+          <% if (foto.descripcion) { %>
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4"
+          >
+            <span
+              class="font-label uppercase tracking-widest text-xs text-primary"
+              ><%= foto.descripcion %></span
+            >
           </div>
+          <% } %>
         </div>
-        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer">
-          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            data-alt="Barba bien cuidada"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCWMeUC8dbkf0zLwbDbCqOvCFxU7FAK9uwudtE7_gVJGl-ORVP1CMO8KXZaPUUhdWSamX2B_FEbQZhwP4KPWIjy1iQo-QaDXFiqAckOlKu2B9I9Gy00WV82ORRiBlQZYxTLPVWAkiobJqJ1pYmiHW_VpnGX4eCOhZX8cdbp_mommb0xmgEmnp0ygPIvTNpJkhvP1D1iaNIwg-R2UCRbCn_v0g2aJ0YiVe8C54WKjgx2k7zw770K_ZYeRND0djDccUMW4BS06bJ02Ao" />
-          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-            <span class="font-label uppercase tracking-widest text-xs text-primary">Diseño de Barba</span>
-          </div>
-        </div>
-        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer hidden md:block">
-          <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            data-alt="Máquina de cortar"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV4V20qKBbPC3gvzmY5qaFKdlP_nPl-xuf3vzwBh92JkcpcSaSXIjXH6KjC3xVEBsutCM_bRmcoEcM3KHekS9v6So13OfKDk5o37pH47APy3EsRTn0aKii4hy4kr6kXKPhrh4LWHFzaJXRAT5teVSzq8_0GxJJiFlv3RG64WKTLHnfGTyBXujlXexyM2L_bt9Ev2yTY1kF1Kh0VLJNhbGlRRqfKKD4vI29AtA1ghbTWLYHSU44w0fffPErB72MF6z9ZeH_VdjLPU05" />
-          <div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-            <span class="font-label uppercase tracking-widest text-xs text-primary">Herramientas</span>
-          </div>
-        </div>
-        <div class="aspect-[3/4] rounded-lg overflow-hidden relative group cursor-pointer hidden md:block bg-surface-container-low flex flex-col justify-center items-center border border-outline-variant/20 hover:border-primary/50 transition-colors duration-300">
-          <span class="material-symbols-outlined text-4xl text-primary/50 mb-2">photo_library</span><span class="font-label uppercase tracking-widest text-xs text-on-surface-variant">Ver Galería Completa</span>
-        </div>
+        <% }); } %>
+        
+        <a
+          class="aspect-[3/4] rounded-lg overflow-hidden bg-surface-container-low flex flex-col justify-center items-center border border-outline-variant/20 hover:border-primary/50 transition-colors duration-300"
+          href="/barbero/galeria"
+        >
+          <span class="material-symbols-outlined text-4xl text-primary/50 mb-2"
+            >photo_library</span
+          ><span
+            class="font-label uppercase tracking-widest text-xs text-on-surface-variant"
+            >Ver Galería Completa</span
+          >
+        </a>
       </div>
     </section>
 
     <div class="h-24"></div>
   </div>
 </main>
+<%- include('../partials/peluquero-mobile-nav', { active: "inicio" }) %>
+<script>
+  (function () {
+    var filtro = document.getElementById("barbero-filtro-fecha");
+    var limpiar = document.getElementById("barbero-limpiar-fecha");
+    var citas = document.querySelectorAll("[data-cita-fecha]");
+    function aplicar() {
+      var fecha = filtro ? filtro.value : "";
+      citas.forEach(function (cita) { cita.hidden = Boolean(fecha && cita.dataset.citaFecha !== fecha); });
+    }
+    if (filtro) filtro.addEventListener("change", aplicar);
+    if (limpiar) limpiar.addEventListener("click", function () { filtro.value = ""; aplicar(); });
+  })();
+</script>
+

@@ -1,22 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/auth.controller');
+const apiauth = require('../controllers/apiauth.controller');
 const verificarToken = require('../middleware/auth');
 const limitarLogin = require('../middleware/ratelimit');
 const { limitarVerificacion } = limitarLogin;
 
+// La API nunca debe quedar en la caché del navegador.
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
 
-router.post('/registro', authController.registro);
-router.post('/verificar-email', limitarVerificacion, authController.verificarEmail);
-
-router.post('/login', limitarLogin, authController.login);
-
-router.post('/logout', authController.logout);
-
-router.get('/perfil', verificarToken, authController.perfil);
+router.post('/registro', limitarVerificacion, apiauth.registro);
+router.post('/login', limitarLogin, apiauth.login);
+router.post('/logout', apiauth.logout);
+router.get('/perfil', verificarToken, apiauth.perfil);
 
 module.exports = router;

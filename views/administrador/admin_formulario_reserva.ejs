@@ -1,76 +1,150 @@
-<% // Layout: dashboard %>
-<%- include('../partials/admin-sidebar', { active: 'reservas' }) %>
-<main class="ml-64 flex-1 min-h-screen p-12 bg-surface">
-<!-- Header -->
-<header class="flex justify-between items-end mb-16">
-<div>
-<h2 class="font-headline text-4xl text-on-background tracking-tight"><% if (datos) { %>Editar<% } else { %>Crear<% } %> Reserva</h2>
-<p class="font-body text-on-surface-variant mt-2">Agenda una cita para un cliente.</p>
-</div>
-<a href="/admin/reservas" class="flex items-center gap-2 text-primary uppercase tracking-widest text-sm font-bold hover:text-primary-container transition-colors active:scale-95"><span class="material-symbols-outlined text-base">arrow_back</span>Volver</a>
-</header>
-<!-- Form Card -->
-<div class="bg-surface-container-low rounded-lg ambient-shadow p-10 max-w-2xl">
-<form method="post" class="grid gap-6">
-<!-- csrf: auth JWT -->
-<% if (error) { %><p class="rounded-md bg-error-container/20 border border-error/40 text-error p-3"><%= error %></p><% } %>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Cliente</label>
-<select name="cliente" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-<option value="" class="bg-surface-container-high">Seleccione un cliente</option>
-<% if (clientes) { clientes.forEach(function(cliente) { %>
-<option value="<%= cliente.id %>" class="bg-surface-container-high" <% if (datos && datos.cliente_id == cliente.id) { %>selected<% } %>><%= cliente.nombre %> <%= cliente.apellido %></option>
-<% }); } %>
-</select>
-</div>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Servicio</label>
-<select name="servicio" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3">
-<% if (servicios) { servicios.forEach(function(servicio) { %>
-<option value="<%= servicio.nombre %>" <% if (datos && datos.servicio === servicio.nombre) { %>selected<% } %>><%= servicio.nombre %> (<%= servicio.duracion %>)</option>
-<% }); } %>
-</select>
-</div>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Barbero</label>
-<select name="peluquero" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-<option value="" class="bg-surface-container-high">Seleccione un barbero</option>
-<% if (peluqueros) { peluqueros.forEach(function(peluquero) { %>
-<option value="<%= peluquero.id %>" class="bg-surface-container-high" <% if (datos && datos.peluquero_id == peluquero.id) { %>selected<% } %>><%= peluquero.nombre %> <%= peluquero.apellido %></option>
-<% }); } %>
-</select>
-</div>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Peluquería</label>
-<select name="peluqueria" required class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-<option value="" class="bg-surface-container-high">Seleccione una peluquería</option>
-<% if (peluquerias) { peluquerias.forEach(function(peluqueria) { %>
-<option value="<%= peluqueria.id %>" class="bg-surface-container-high" <% if (datos && datos.peluqueria_id == peluqueria.id) { %>selected<% } %>><%= peluqueria.nombre %></option>
-<% }); } %>
-</select>
-</div>
-<div class="grid grid-cols-2 gap-6">
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Fecha</label>
-<input type="date" name="fecha" required value="<%= datos ? datos.fecha || '' : '' %>" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-</div>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Hora</label>
-<input type="time" name="hora" required value="<%= datos ? datos.hora || '' : '' %>" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-</div>
-</div>
-<div class="grid gap-2">
-<label class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Estado</label>
-<select name="estado" class="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface rounded-lg px-4 py-3 focus:ring-0 focus:border-primary transition-colors">
-<% if (reserva_estados) { reserva_estados.forEach(function(estado) { %>
-<option value="<%= estado[0] %>" class="bg-surface-container-high" <% if (datos && datos.estado === estado[0]) { %>selected<% } %>><%= estado[1] %></option>
-<% }); } %>
-</select>
-</div>
-<div class="pt-2">
-<button type="submit" class="btn-gold-gradient font-label uppercase tracking-widest text-sm font-bold py-4 px-10 rounded-md hover:opacity-90 transition-opacity active:scale-95">Guardar Reserva</button>
-</div>
-</form>
-</div>
-<div class="signature-divider mt-12"></div>
+<%# Título: Crear / Editar Reserva - TecnoCorte %>
+
+<%- include('../partials/admin-sidebar', { active: "reservas" }) %>
+<main class="ml-0 md:ml-64 flex-1 min-h-screen p-6 md:p-12 pb-24 md:pb-12 bg-surface">
+  <%- include('../partials/panel-header') %>
+  <div class="mx-auto max-w-3xl">
+    <a
+      href="/admin/reservas"
+      class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary transition-colors hover:text-primary-container active:scale-95"
+      ><span class="material-symbols-outlined text-base">arrow_back</span
+      >Volver</a
+    >
+
+    <div class="mt-6 mb-8">
+      <p class="tc-eyebrow mb-3">Agenda</p>
+      <h1 class="tc-display text-4xl md:text-5xl">
+        <% if (datos) { %>Editar<% } else { %>Nueva<% } %>
+        <span class="tc-gold-text">reserva</span>
+      </h1>
+      <p class="mt-3 text-on-surface-variant">
+        Agenda una cita para un cliente eligiendo barbero, sede, fecha y hora.
+      </p>
+    </div>
+
+    <form method="post" class="tc-form tc-form__grid">
+      
+      <% if (error) { %>
+      <p
+        class="tc-field--full rounded-xl border border-error/40 bg-error/10 p-3 text-sm text-error"
+      >
+        <%= error %>
+      </p>
+      <% } %>
+
+      <label class="tc-field tc-field--always tc-field--full">
+        <select name="cliente" required class="tc-field__input">
+          
+          <option value="">Seleccione un cliente</option>
+          <% var _lista12 = (clientes || []); if (_lista12.length) { _lista12.forEach(function (cliente, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista12.length - 1 }; var _finDeLista = _lista12.length - 1; %>
+          <option
+            value="<%= cliente.id %>"
+            <% if (datos && datos.cliente_id == cliente.id) { %>selected<% } %>
+          >
+            <%= cliente.nombre %> <%= cliente.apellido %>
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Cliente</span>
+      </label>
+
+      <label class="tc-field tc-field--always tc-field--full">
+        <select name="servicio" class="tc-field__input">
+          
+          <% var _lista13 = (servicios || []); if (_lista13.length) { _lista13.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista13.length - 1 }; var _finDeLista = _lista13.length - 1; %>
+          <option
+            value="<%= servicio.nombre %>"
+            <% if (datos.servicio == servicio.nombre) { %>selected<% } %>
+          >
+            <%= servicio.nombre %> (<%= servicio.duracion %>)
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Servicio</span>
+      </label>
+
+      <label class="tc-field tc-field--always">
+        <select name="peluquero" required class="tc-field__input">
+          
+          <option value="">Seleccione un barbero</option>
+          <% var _lista14 = (peluqueros || []); if (_lista14.length) { _lista14.forEach(function (peluquero, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista14.length - 1 }; var _finDeLista = _lista14.length - 1; %>
+          <option
+            value="<%= peluquero.id %>"
+            <% if (datos && datos.peluquero_id == peluquero.id) { %>selected<% } %>
+          >
+            <%= peluquero.nombre %> <%= peluquero.apellido %>
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Barbero</span>
+      </label>
+
+      <label class="tc-field tc-field--always">
+        <select name="peluqueria" required class="tc-field__input">
+          
+          <option value="">Seleccione una peluquería</option>
+          <% var _lista15 = (peluquerias || []); if (_lista15.length) { _lista15.forEach(function (peluqueria, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista15.length - 1 }; var _finDeLista = _lista15.length - 1; %>
+          <option
+            value="<%= peluqueria.id %>"
+            <% if (datos && datos.peluqueria_id == peluqueria.id) { %>selected<% } %>
+          >
+            <%= peluqueria.nombre %>
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Peluquería</span>
+      </label>
+
+      <label class="tc-field tc-field--always">
+        <input
+          required
+          type="date"
+          name="fecha"
+          value="<% if (datos.fecha) { %><%= fmtFecha(datos.fecha, "Y-m-d") %><% } %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Fecha</span>
+      </label>
+
+      <label class="tc-field tc-field--always">
+        <input
+          required
+          type="time"
+          name="hora"
+          value="<%= (datos.hora === undefined || datos.hora === null ? "" : datos.hora) %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Hora</span>
+      </label>
+
+      <label class="tc-field tc-field--always tc-field--full">
+        <select name="estado" class="tc-field__input">
+          
+          <% var _lista16 = (reserva_estados || []); if (_lista16.length) { _lista16.forEach(function (estado, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista16.length - 1 }; var _finDeLista = _lista16.length - 1; %>
+          <option
+            value="<%= estado[0] %>"
+            <% if (datos.estado == estado[0]) { %>selected<% } %>
+          >
+            <%= estado[1] %>
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Estado de la reserva</span>
+      </label>
+
+      <div class="tc-form__actions">
+        <button class="tc-btn tc-btn--gold" type="submit">
+          <span class="material-symbols-outlined text-[18px]">event_available</span>
+          Guardar reserva
+        </button>
+        <a href="/admin/reservas" class="tc-btn tc-btn--ghost"
+          >Cancelar</a
+        >
+      </div>
+    </form>
+  </div>
 </main>
+<%- include('../partials/admin-mobile-nav', { active: "reservas" }) %>
+

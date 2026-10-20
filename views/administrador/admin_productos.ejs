@@ -1,12 +1,106 @@
-<% // Layout: dashboard %>
-<%- include('../partials/admin-sidebar', { active: 'productos' }) %>
-<main class="ml-64 flex-1 p-12">
-<div class="flex justify-between items-center mb-10"><div><h1 class="font-headline text-4xl text-primary">Productos</h1><p class="text-on-surface-variant mt-2">Productos que se muestran en la tienda.</p></div><a class="btn-gold-gradient py-3 px-5 rounded font-bold" href="/admin/productos/nuevo">+ Añadir producto</a></div>
-<div class="bg-surface-container-low rounded-xl overflow-hidden"><table class="w-full text-left"><thead class="bg-surface-container-high text-on-surface-variant text-xs uppercase"><tr><th class="p-4">Producto</th><th class="p-4">Categoría</th><th class="p-4">Precio</th><th class="p-4">Stock</th><th class="p-4">Estado</th><th class="p-4">Acciones</th></tr></thead><tbody>
-<% if (productos && productos.length) { productos.forEach(function(producto) { %>
-<tr class="border-t border-outline-variant/20"><td class="p-4 font-semibold"><%= producto.nombre %></td><td class="p-4"><%= producto.categoria_display %></td><td class="p-4"><%= fmtMoneda(producto.precio || 0) %></td><td class="p-4"><%= producto.stock || 0 %></td><td class="p-4"><% if (producto.disponible) { %>Disponible<% } else { %>No disponible<% } %></td><td class="p-4"><a class="text-primary mr-3" href="/admin/productos/<%= producto.id %>/editar">Editar</a><form class="inline" method="post" action="/admin/productos/<%= producto.id %>/eliminar"><!-- csrf: auth JWT --><button class="text-error" data-confirm="¿Eliminar este producto?">Eliminar</button></form></td></tr>
-<% }); } else { %>
-<tr><td class="p-8 text-on-surface-variant" colspan="6">No hay productos.</td></tr>
-<% } %>
-</tbody></table></div>
+<%- include('../partials/admin-sidebar', { active: "productos" }) %>
+<main class="ml-0 md:ml-64 flex-1 p-6 md:p-12 pb-24 md:pb-12">
+  <%- include('../partials/panel-header') %>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-10">
+    <div>
+      <h1 class="font-headline text-3xl md:text-4xl text-primary">Productos</h1>
+      <p class="text-on-surface-variant mt-2">
+        Productos que se muestran en la tienda.
+      </p>
+    </div>
+    <a
+      class="btn-gold-gradient py-3 px-5 rounded font-bold"
+      href="/admin/productos/nuevo"
+      >+ Añadir producto</a
+    >
+  </div>
+  <div class="bg-surface-container-low rounded-xl overflow-hidden">
+    <div class="table-responsive">
+    <table class="w-full text-left min-w-[720px]">
+      
+      <thead
+        class="bg-surface-container-high text-on-surface-variant text-xs uppercase"
+      >
+        <tr>
+          <th class="p-4">Producto</th>
+          <th class="p-4">Foto</th>
+          <th class="p-4">Categoría</th>
+          <th class="p-4">Precio</th>
+          <th class="p-4">Stock</th>
+          <th class="p-4">Estado</th>
+          <th class="p-4">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% var _lista37 = (productos || []); if (_lista37.length) { _lista37.forEach(function (producto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista37.length - 1 }; var _finDeLista = _lista37.length - 1; %>
+        <tr class="border-t border-outline-variant/20">
+          <td class="p-4 font-semibold"><%= producto.nombre %></td>
+          <td class="p-4">
+            
+            <% if (producto.imagen) { %>
+            <img
+              src="<%= producto.imagen %>"
+              alt="<%= producto.nombre %>"
+              class="h-14 w-14 rounded-lg object-cover"
+            />
+            <% } else { %>
+            <span class="material-symbols-outlined text-on-surface-variant/50"
+              >image</span
+            >
+            <% } %>
+          </td>
+          <td class="p-4"><%= producto.categoria_display %></td>
+          <td class="p-4">$<%= producto.precio %></td>
+          <td class="p-4"><%= producto.stock %></td>
+          <td class="p-4">
+            <% if (producto.disponible) { %>Disponible<% } else { %>No disponible<% } %>
+          </td>
+          <td class="p-4">
+            <a
+              class="text-primary mr-3"
+              href="<%= `/admin/productos/${producto.id}/editar` %>"
+              >Editar</a
+            >
+            <% if (producto.imagen) { %>
+            <form
+              class="inline"
+              method="post"
+              action="<%= `/admin/productos/${producto.id}/quitar-imagen` %>"
+            >
+              <button
+                class="text-error mr-3"
+                type="submit"
+                data-motivo="Estás a punto de quitar la foto de «<%= producto.nombre %>»."
+              >
+                Quitar foto
+              </button>
+            </form>
+            <% } %>
+            <form
+              class="inline"
+              method="post"
+              action="<%= `/admin/productos/${producto.id}/eliminar` %>"
+            >
+              <button
+                class="text-error"
+                data-confirm="¿Eliminar este producto?"
+              >
+                Eliminar
+              </button>
+            </form>
+          </td>
+        </tr>
+        <% }); } else { %>
+        <tr>
+          <td class="p-8 text-on-surface-variant" colspan="7">
+            No hay productos.
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+    </div>
+  </div>
 </main>
+<%- include('../partials/admin-mobile-nav', { active: "productos" }) %>
+

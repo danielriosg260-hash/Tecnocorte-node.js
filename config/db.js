@@ -1,47 +1,34 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const CONNECTION_ENV_NAMES = ['MONGO_URI', 'MONGODB_URI', 'DATABASE_URL'];
+// Nombre de la base de datos que se usa cuando la URI no lo trae.
+const BASE_DATOS = process.env.MONGO_DB_NAME || 'tecnocorte';
 
-const resolveConnectionString = () => {
-  const configured = CONNECTION_ENV_NAMES
-    .map((name) => ({ name, value: process.env[name]?.trim() }))
-    .filter(({ value }) => value);
+/**
+ * Devuelve la cadena de conexión configurada en el archivo .env.
+ * Se aceptan tres nombres porque el proyecto se desplegó en varios servicios
+ * y cada uno entrega la variable con un nombre distinto.
+ */
+function obtenerUri() {
+  const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL;
 
-  if (configured.length > 1) {
-    throw new Error(`Configura solo una variable de conexión a MongoDB: ${CONNECTION_ENV_NAMES.join(', ')}`);
+  if (!uri) {
+    throw new Error('Falta MONGO_URI en el archivo .env');
   }
 
-  const connectionString = configured[0]?.value;
-  if (!connectionString) throw new Error('Configura MONGO_URI (o DATABASE_URL) para conectar con MongoDB');
-  if (process.env.NODE_ENV === 'production' && /localhost|127\.0\.0\.1|::1/.test(connectionString)) {
-    throw new Error('En producción no puedes usar MongoDB local. Configura MONGO_URI con una URL de MongoDB Atlas');
-  }
-  return connectionString;
-};
+  return uri.trim();
+}
 
-mongoose.connection.on("error", (error) => {
-  console.error("Error de conexión a MongoDB:", error.message);
-});
+/**
+ * Abre la conexión con MongoDB usando mongoose.
+ * Se llama una sola vez cuando arranca el servidor.
+ */
+async function conectarDB() {
+  mongoose.connection.on('error', (error) => {
+    console.error('Error de conexión a MongoDB:', error.message);
+  });
 
-mongoose.connection.on("disconnected", () => {
-  console.warn("MongoDB desconectado. Reintentando conexión...");
-});
+  await mongoose.connect(obtenerUri(), { dbName: BASE_DATOS });
+  console.log(`Conectado a MongoDB (base de datos: ${BASE_DATOS})`);
+}
 
-const connectDB = async () => {
-  const connectionString = resolveConnectionString();
-  try {
-    await mongoose.connect(connectionString, {
-      dbName: process.env.MONGO_DB_NAME || 'tecnocorte',
-      serverSelectionTimeoutMS: 10000,
-      bufferTimeoutMS: 5000
-    });
-  } catch (error) {
-    if (error.codeName === 'AuthenticationFailed' || /bad auth|authentication failed/i.test(error.message)) {
-      throw new Error('MongoDB rechazó la autenticación. Verifica en Atlas el usuario, la contraseña y la URI configurada en Render.');
-    }
-    throw error;
-  }
-  console.log("Conectado a MongoDB correctamente");
-};
-
-module.exports = { connectDB };
+module.exports = { conectarDB };

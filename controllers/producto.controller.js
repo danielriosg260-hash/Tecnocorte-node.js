@@ -1,86 +1,89 @@
-const Producto = require("../models/producto.model");
-const PedidoProducto = require("../models/pedidoproducto.model");
+const Producto = require('../models/producto.model');
+const PedidoProducto = require('../models/pedidoproducto.model');
 
-function camposProducto(body, parcial = false) {
-  const campos = {};
-  const incluir = (nombre, valor) => {
-    if (!parcial || valor !== undefined) campos[nombre] = valor;
-  };
-
-  incluir("nombre", body.nombre);
-  incluir("descripcion", body.descripcion);
-  if (!parcial || body.precio !== undefined) campos.precio = Number(body.precio);
-  incluir("categoria", body.categoria);
-  if (!parcial || body.stock !== undefined) campos.stock = Number(body.stock);
-  if (!parcial || body.disponible !== undefined) {
-    campos.disponible = body.disponible === true || body.disponible === "true" || body.disponible === "on";
-  }
-  return campos;
-}
-
-async function crear(req, res) {
+/** Lista todos los productos. */
+async function find(req, res) {
   try {
-    const producto = await Producto.create(camposProducto(req.body));
-    res.status(201).json(producto);
-  } catch (error) {
-    res.status(400).json({ mensaje: "Datos de producto inválidos" });
-  }
-}
-
-async function listarTodos(req, res) {
-  try {
-    const productos = await Producto.find();
+    const productos = await Producto.find().sort({ nombre: 1 });
     res.status(200).json(productos);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudieron cargar los productos" });
+    res.status(500).json({ mensaje: 'No se pudieron cargar los productos.' });
   }
 }
 
-async function listarUno(req, res) {
+/** Busca un producto por su id. */
+async function findOne(req, res) {
   try {
-    const producto = await Producto.findOne({ _id: req.params.id });
-    if (!producto) {
-      return res.status(404).json({ mensaje: "Producto no encontrado" });
-    }
+    const producto = await Producto.findById(req.params.id);
+
+    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado.' });
+
     res.status(200).json(producto);
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo cargar el producto" });
+    res.status(500).json({ mensaje: 'No se pudo cargar el producto.' });
   }
 }
 
-async function actualizar(req, res) {
+/** Crea un producto. */
+async function insertOne(req, res) {
   try {
-    const producto = await Producto.findOneAndUpdate({ _id: req.params.id }, camposProducto(req.body, true), {
-      new: true,
-      runValidators: true,
+    const producto = await Producto.create({
+      nombre: req.body.nombre,
+      descripcion: req.body.descripcion,
+      precio: Number(req.body.precio),
+      categoria: req.body.categoria,
+      stock: Number(req.body.stock),
+      disponible: req.body.disponible === true || req.body.disponible === 'on',
+      imagen: req.body.imagen
     });
-    if (!producto) {
-      return res.status(404).json({ mensaje: "Producto no encontrado" });
+
+    res.status(201).json(producto);
+  } catch (error) {
+    res.status(400).json({ mensaje: 'Datos del producto inválidos.' });
+  }
+}
+
+/** Actualiza un producto. */
+async function findOneAndUpdate(req, res) {
+  try {
+    const campos = {
+      nombre: req.body.nombre,
+      descripcion: req.body.descripcion,
+      categoria: req.body.categoria,
+      imagen: req.body.imagen
+    };
+
+    if (req.body.precio !== undefined) campos.precio = Number(req.body.precio);
+    if (req.body.stock !== undefined) campos.stock = Number(req.body.stock);
+    if (req.body.disponible !== undefined) {
+      campos.disponible = req.body.disponible === true || req.body.disponible === 'on';
     }
+
+    Object.keys(campos).forEach((campo) => campos[campo] === undefined && delete campos[campo]);
+
+    const producto = await Producto.findByIdAndUpdate(req.params.id, campos, { new: true, runValidators: true });
+    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado.' });
+
     res.status(200).json(producto);
   } catch (error) {
-    res.status(400).json({ mensaje: "Datos de producto inválidos" });
+    res.status(400).json({ mensaje: 'Datos del producto inválidos.' });
   }
 }
 
-async function eliminar(req, res) {
+/** Elimina un producto que no esté en pedidos. */
+async function findOneAndDelete(req, res) {
   try {
-    if (await PedidoProducto.exists({ producto: req.params.id }))
-      return res.status(409).json({ mensaje: "No se puede eliminar un producto incluido en pedidos" });
-    const producto = await Producto.findOneAndDelete({ _id: req.params.id });
-    if (!producto) {
-      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    if (await PedidoProducto.exists({ producto: req.params.id })) {
+      return res.status(409).json({ mensaje: 'No se puede eliminar un producto incluido en pedidos.' });
     }
-    res.status(200).json({ mensaje: "Producto eliminado correctamente" });
+
+    const producto = await Producto.findByIdAndDelete(req.params.id);
+    if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado.' });
+
+    res.status(200).json({ mensaje: 'Producto eliminado correctamente.' });
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo eliminar el producto" });
+    res.status(500).json({ mensaje: 'No se pudo eliminar el producto.' });
   }
 }
 
-module.exports = {
-  crear,
-  listarTodos,
-  listarUno,
-  actualizar,
-  eliminar,
-};
+module.exports = { find, findOne, findOneAndUpdate, findOneAndDelete, insertOne };

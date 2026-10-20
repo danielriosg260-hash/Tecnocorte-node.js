@@ -1,0 +1,23 @@
+<!-- Cabecera completa de los paneles (Admin y Barbero) -->
+<header class="panel-header sticky top-0 z-40 flex items-center justify-between gap-4 w-full px-6 md:px-10 py-4">
+  <%# En móvil se muestra el logo para volver al inicio del panel %>
+  <a class="inline-flex md:hidden"
+    href="<%= logueado && logueado.rol === 'Admin' ? '/admin' : (logueado && logueado.rol === 'Barbero' ? '/barbero' : '/perfil') %>"
+    aria-label="TecnoCorte"><%- include('logo') %></a>
+  <div class="hidden md:block"></div>
+  <%- include('panel-header-actions') %>
+</header>
+
+<%# Estilos del fondo translúcido de la cabecera %>
+<style>
+  .panel-header {
+    background: var(--c-surface-container-low, rgba(255, 255, 255, 0.72));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--c-outline-variant, rgba(0, 0, 0, 0.08));
+  }
+  .dark .panel-header {
+    background: rgba(18, 18, 20, 0.72);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+</style>

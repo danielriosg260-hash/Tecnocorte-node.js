@@ -22,10 +22,15 @@ test('todas las plantillas EJS compilan', () => {
 
 test('las rutas y middleware principales cargan sin errores', () => {
   assert.doesNotThrow(() => {
-    require('../routes/page.routes');
+    require('../routes/publico.routes');
+    require('../routes/cuenta.routes');
+    require('../routes/admin.routes');
+    require('../routes/barbero.routes');
     require('../routes/auth.routes');
+    require('../middleware/sesion');
     require('../middleware/auth');
-    require('../middleware/webauth');
+    require('../middleware/errores');
+    require('../middleware/mantenimiento');
   });
 });
 
@@ -45,6 +50,6 @@ test('los modelos aplican límites básicos de negocio', () => {
   assert.deepEqual(Reserva.schema.path('estado').options.enum, ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar']);
   assert.equal(Producto.schema.path('precio').options.min, 0);
   assert.equal(Producto.schema.path('stock').options.min, 0);
-  assert.deepEqual(Pedido.schema.path('estado').options.enum, ['Pendiente', 'Confirmado', 'Enviado', 'Entregado', 'Cancelado']);
+  assert.deepEqual(Pedido.schema.path('estado').options.enum, ['Pendiente', 'Listo', 'Entregado', 'Cancelado']);
   assert.equal(PedidoProducto.schema.path('cantidad').options.min, 1);
 });

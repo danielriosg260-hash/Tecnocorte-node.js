@@ -1,97 +1,98 @@
-const Reserva = require("../models/reserva.model");
-const Usuario = require("../models/usuario.model");
-const Peluqueria = require("../models/peluqueria.model");
-const transporter = require("../config/email");
-const { enviarCorreoBonito, escapeHtml } = require("../config/emailtemplate");
+const mongoose = require('mongoose');
+const Reserva = require('../models/reserva.model');
+const Usuario = require('../models/usuario.model');
+const Peluqueria = require('../models/peluqueria.model');
+const { ESTADOS_RESERVA } = require('../config/constantes');
+const { notificarReserva } = require('../services/notificaciones');
+const { reservasSolapadas } = require('../services/disponibilidad');
+const { esFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 
-const {
-  esFecha: fechaValida,
-  minutosDeHora: minutosHora,
-  inicioDelDiaDate: fechaInicio,
-} = require("../utils/fechas");
+const ESTADOS_ACTIVOS = ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'];
 
-const ESTADOS_ACTIVOS = ["Pendiente", "Confirmada", "Completada", "Reprogramar"];
-const ESTADOS_VALIDOS = [...ESTADOS_ACTIVOS, "Cancelada"];
+/** Revisa que una cita tenga datos correctos y no se cruce con otra. */
+async function validarReserva(datos) {
+  const { cliente, peluqueria, peluquero, fecha, hora, servicio, minutos, estado, excluir } = datos;
 
-function esIdValido(id) {
-  return require("mongoose").isValidObjectId(id);
+  if (!mongoose.isValidObjectId(cliente) || !mongoose.isValidObjectId(peluqueria) || !mongoose.isValidObjectId(peluquero)) {
+    return 'Los identificadores de la reserva no son válidos.';
+  }
+
+  if (minutosDeHora(hora) < 0 || !Number.isInteger(Number(minutos)) || !esFecha(fecha)) {
+    return 'La fecha, la hora o la duración no son válidas.';
+  }
+
+  if (!String(servicio || '').trim() || String(servicio).length > 120) return 'El servicio no es válido.';
+  if (fechaLocal(fecha, hora) <= new Date()) return 'La fecha y hora deben estar en el futuro.';
+  if (estado !== undefined && !ESTADOS_RESERVA.some(([valor]) => valor === estado)) {
+    return 'El estado de la reserva no es válido.';
+  }
+
+  const [existeCliente, existePeluqueria, existeBarbero] = await Promise.all([
+    Usuario.exists({ _id: cliente, rol: 'Cliente', activo: { $ne: false } }),
+    Peluqueria.exists({ _id: peluqueria }),
+    Usuario.exists({ _id: peluquero, rol: 'Barbero', activo: { $ne: false }, peluqueria_id: peluqueria })
+  ]);
+
+  if (!existeCliente) return 'El cliente no existe o no está disponible.';
+  if (!existePeluqueria) return 'La barbería no existe.';
+  if (!existeBarbero) return 'El barbero no está disponible para esta barbería.';
+
+  const ocupado = await reservasSolapadas(Reserva, {
+    peluquero,
+    fecha,
+    hora,
+    minutos: Number(minutos),
+    excluir
+  });
+
+  return ocupado ? 'Ese horario ya está ocupado.' : null;
 }
 
-async function validarReserva({
-  cliente,
-  peluqueria,
-  peluquero,
-  fecha,
-  hora,
-  servicio,
-  minutos,
-  estado,
-  excluir,
-}) {
-  if (!esIdValido(cliente) || !esIdValido(peluqueria) || !esIdValido(peluquero)) {
-    return "Los identificadores de la reserva no son válidos.";
-  }
-  const inicio = minutosHora(hora);
-  const duracion = Number(minutos);
-  if (inicio < 0 || !Number.isInteger(duracion) || duracion < 15 || duracion > 480) {
-    return "La hora o duración de la reserva no son válidas.";
-  }
-  if (!fechaValida(fecha)) return "La fecha debe ser válida.";
-  if (typeof servicio !== "string" || !servicio.trim() || servicio.length > 120)
-    return "El servicio no es válido.";
-
-  const fechaTexto = fecha instanceof Date ? fecha.toISOString().slice(0, 10) : fecha;
-  const fechaHora = new Date(fechaTexto + "T" + hora + ":00");
-  if (fechaHora <= new Date()) return "La fecha y hora deben estar en el futuro.";
-
-  if (estado !== undefined && !ESTADOS_VALIDOS.includes(estado))
-    return "El estado de la reserva no es válido.";
-
-  const clienteDoc = await Usuario.findOne({ _id: cliente, rol: "Cliente", activo: { $ne: false } }).select(
-    "_id email nombre",
-  );
-  const peluqueriaDoc = await Peluqueria.findById(peluqueria).select("_id nombre");
-  const peluqueroDoc = await Usuario.findOne({
-    _id: peluquero,
-    rol: "Barbero",
-    activo: { $ne: false },
-    peluqueria_id: peluqueria,
-  }).select("_id email nombre");
-  if (!clienteDoc) return "El cliente no existe o no está disponible.";
-  if (!peluqueriaDoc) return "La peluquería no existe.";
-  if (!peluqueroDoc) return "El barbero no está disponible para esta peluquería.";
-
-  const inicioFecha = fechaInicio(fecha);
-  const finFecha = new Date(inicioFecha);
-  finFecha.setDate(finFecha.getDate() + 1);
-
-  const filtro = { peluquero, fecha: { $gte: inicioFecha, $lt: finFecha }, estado: { $in: ESTADOS_ACTIVOS } };
-  if (excluir) filtro._id = { $ne: excluir };
-  const reservas = await Reserva.find(filtro).select("hora minutos");
-
-  const fin = inicio + duracion;
-  for (const reserva of reservas) {
-    const reservaInicio = minutosHora(reserva.hora);
-    const reservaFin = reservaInicio + (reserva.minutos || 30);
-    if (reservaInicio >= 0 && inicio < reservaFin && fin > reservaInicio) {
-      return "Ese horario ya está ocupado.";
-    }
-  }
-  return null;
-}
-
+/** Limita lo que cada rol puede ver. */
 function filtroPropietario(usuario) {
-  if (usuario.rol === "Admin") return {};
-  if (usuario.rol === "Barbero") return { peluquero: usuario._id };
+  if (usuario.rol === 'Admin') return {};
+  if (usuario.rol === 'Barbero') return { peluquero: usuario._id };
   return { cliente: usuario._id };
 }
 
-async function crear(req, res) {
+/** Lista las reservas visibles para el usuario. */
+async function find(req, res) {
   try {
-    const cliente = req.usuario.rol === "Cliente" ? req.usuario._id : req.body.cliente;
-    const peluquero = req.usuario.rol === "Barbero" ? req.usuario._id : req.body.peluquero;
+    const reservas = await Reserva.find(filtroPropietario(req.usuario))
+      .populate('cliente', 'nombre apellido email telefono')
+      .populate('peluqueria', 'nombre ubicacion telefono')
+      .populate('peluquero', 'nombre apellido email telefono');
+
+    res.status(200).json(reservas);
+  } catch (error) {
+    res.status(500).json({ mensaje: 'No se pudieron cargar las reservas.' });
+  }
+}
+
+/** Busca una reserva por su id. */
+async function findOne(req, res) {
+  try {
+    const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) })
+      .populate('cliente', 'nombre apellido email telefono')
+      .populate('peluqueria', 'nombre ubicacion telefono')
+      .populate('peluquero', 'nombre apellido email telefono');
+
+    if (!reserva) return res.status(404).json({ mensaje: 'Reserva no encontrada.' });
+
+    res.status(200).json(reserva);
+  } catch (error) {
+    res.status(500).json({ mensaje: 'No se pudo cargar la reserva.' });
+  }
+}
+
+/** Crea una reserva. */
+async function insertOne(req, res) {
+  try {
+    const cliente = req.usuario.rol === 'Cliente' ? req.usuario._id : req.body.cliente;
+    const peluquero = req.usuario.rol === 'Barbero' ? req.usuario._id : req.body.peluquero;
     const minutos = Number(req.body.minutos) || 30;
-    const estado = req.usuario.rol === "Admin" ? req.body.estado || "Pendiente" : "Pendiente";
+    const estado = req.usuario.rol === 'Admin' ? req.body.estado || 'Pendiente' : 'Pendiente';
+
     const error = await validarReserva({
       cliente,
       peluqueria: req.body.peluqueria,
@@ -100,139 +101,85 @@ async function crear(req, res) {
       hora: req.body.hora,
       servicio: req.body.servicio,
       minutos,
-      estado,
+      estado
     });
+
     if (error) return res.status(400).json({ mensaje: error });
+
     const reserva = await Reserva.create({
       cliente,
       peluqueria: req.body.peluqueria,
       peluquero,
-      fecha: req.body.fecha,
+      fecha: new Date(`${req.body.fecha}T00:00:00`),
       hora: req.body.hora,
       servicio: req.body.servicio,
       minutos,
-      estado,
+      estado
     });
 
-    const clienteUsuario = await Usuario.findById(cliente);
-    const peluqueria = await Peluqueria.findById(req.body.peluqueria);
-
-    if (clienteUsuario) {
-      const fechaFormateada = new Date(reserva.fecha).toLocaleDateString("es-CO", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      const nombrePeluqueria = peluqueria ? peluqueria.nombre : "la peluquería";
-
-      try {
-        await enviarCorreoBonito(transporter, {
-          to: clienteUsuario.email,
-          subject: "Confirmación de tu reserva en TecnoCorte",
-          title: "Tu cita está reservada",
-          preheader: "Hemos guardado tu cita en TecnoCorte.",
-          greeting: `¡Hola ${clienteUsuario.nombre}!`,
-          content: `<p>Tu cita ha sido reservada exitosamente.</p><p><strong>Peluquería:</strong> ${escapeHtml(nombrePeluqueria)}<br><strong>Fecha:</strong> ${escapeHtml(fechaFormateada)}<br><strong>Hora:</strong> ${escapeHtml(reserva.hora)}<br><strong>Servicio:</strong> ${escapeHtml(reserva.servicio || "No especificado")}<br><strong>Estado:</strong> ${escapeHtml(reserva.estado)}</p><p>Te esperamos en TecnoCorte.</p>`,
-          text: `Tu cita fue reservada en ${nombrePeluqueria} el ${fechaFormateada} a las ${reserva.hora}.`,
-        });
-      } catch (emailError) {
-        console.error("Error al enviar correo de reserva:", emailError.message);
-      }
-    }
-
+    void notificarReserva(reserva._id, 'reservada');
     res.status(201).json(reserva);
   } catch (error) {
-    res.status(400).json({ mensaje: "No se pudo crear la reserva." });
+    res.status(400).json({ mensaje: 'No se pudo crear la reserva.' });
   }
 }
 
-async function listarTodos(req, res) {
+/** Actualiza una reserva. */
+async function findOneAndUpdate(req, res) {
   try {
-    const filtro = filtroPropietario(req.usuario);
-    const reservas = await Reserva.find(filtro)
-      .populate("cliente", "nombre apellido email telefono rol")
-      .populate("peluqueria", "nombre ubicacion telefono")
-      .populate("peluquero", "nombre apellido email telefono rol");
-    res.status(200).json(reservas);
-  } catch (error) {
-    res.status(500).json({ mensaje: "No se pudieron cargar las reservas" });
-  }
-}
+    const actual = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
+    if (!actual) return res.status(404).json({ mensaje: 'Reserva no encontrada.' });
 
-async function listarUno(req, res) {
-  try {
-    const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) })
-      .populate("cliente", "nombre apellido email telefono rol")
-      .populate("peluqueria", "nombre ubicacion telefono")
-      .populate("peluquero", "nombre apellido email telefono rol");
-    if (!reserva) {
-      return res.status(404).json({ mensaje: "Reserva no encontrada" });
-    }
-    res.status(200).json(reserva);
-  } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo cargar la reserva" });
-  }
-}
+    const esAdmin = req.usuario.rol === 'Admin';
+    const permitidos = esAdmin
+      ? ['peluqueria', 'peluquero', 'fecha', 'hora', 'servicio', 'minutos', 'estado']
+      : ['peluqueria', 'fecha', 'hora', 'servicio', 'minutos'];
 
-async function actualizar(req, res) {
-  try {
-    const reservaActual = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
-    if (!reservaActual) return res.status(404).json({ mensaje: "Reserva no encontrada" });
-    const esAdmin = req.usuario.rol === "Admin";
-    const camposPermitidos = esAdmin
-      ? ["peluqueria", "peluquero", "fecha", "hora", "servicio", "minutos", "estado"]
-      : ["peluqueria", "fecha", "hora", "servicio", "minutos"];
     const cambios = {};
-    camposPermitidos.forEach((campo) => {
+    permitidos.forEach((campo) => {
       if (req.body[campo] !== undefined) cambios[campo] = req.body[campo];
     });
+
     const datos = {
-      cliente: reservaActual.cliente,
-      peluqueria: cambios.peluqueria ?? reservaActual.peluqueria,
-      peluquero: esAdmin ? (cambios.peluquero ?? reservaActual.peluquero) : reservaActual.peluquero,
-      fecha: cambios.fecha ?? reservaActual.fecha,
-      hora: cambios.hora ?? reservaActual.hora,
-      servicio: cambios.servicio ?? reservaActual.servicio,
-      minutos: cambios.minutos !== undefined ? Number(cambios.minutos) : reservaActual.minutos,
-      estado: esAdmin ? (cambios.estado ?? reservaActual.estado) : reservaActual.estado,
+      cliente: actual.cliente,
+      peluqueria: cambios.peluqueria || actual.peluqueria,
+      peluquero: esAdmin ? cambios.peluquero || actual.peluquero : actual.peluquero,
+      fecha: cambios.fecha || actual.fecha,
+      hora: cambios.hora || actual.hora,
+      servicio: cambios.servicio || actual.servicio,
+      minutos: cambios.minutos ? Number(cambios.minutos) : actual.minutos,
+      estado: esAdmin ? cambios.estado || actual.estado : actual.estado
     };
-    const error = await validarReserva({ ...datos, excluir: reservaActual._id });
+
+    const error = await validarReserva({ ...datos, excluir: actual._id });
     if (error) return res.status(400).json({ mensaje: error });
-    const reserva = await Reserva.findOneAndUpdate({ _id: reservaActual._id }, cambios, {
-      new: true,
-      runValidators: true,
-    });
-    if (!reserva) {
-      return res.status(404).json({ mensaje: "Reserva no encontrada" });
-    }
+
+    if (cambios.fecha) cambios.fecha = new Date(`${cambios.fecha}T00:00:00`);
+
+    const reserva = await Reserva.findByIdAndUpdate(actual._id, cambios, { new: true, runValidators: true });
+    void notificarReserva(reserva._id, 'modificada');
+
     res.status(200).json(reserva);
   } catch (error) {
-    res.status(400).json({ mensaje: "Datos de reserva inválidos." });
+    res.status(400).json({ mensaje: 'Datos de la reserva inválidos.' });
   }
 }
 
-async function eliminar(req, res) {
+/** Elimina una reserva. */
+async function findOneAndDelete(req, res) {
   try {
-    const reservaActual = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
-    if (!reservaActual) return res.status(404).json({ mensaje: "Reserva no encontrada" });
-    if (req.usuario.rol !== "Admin" && ["Completada", "Cancelada"].includes(reservaActual.estado)) {
-      return res.status(409).json({ mensaje: "Esta reserva ya no se puede eliminar." });
+    const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
+    if (!reserva) return res.status(404).json({ mensaje: 'Reserva no encontrada.' });
+
+    if (req.usuario.rol !== 'Admin' && ['Completada', 'Cancelada'].includes(reserva.estado)) {
+      return res.status(409).json({ mensaje: 'Esta reserva ya no se puede eliminar.' });
     }
-    const reserva = await Reserva.findByIdAndDelete(reservaActual._id);
-    if (!reserva) {
-      return res.status(404).json({ mensaje: "Reserva no encontrada" });
-    }
-    res.status(200).json({ mensaje: "Reserva eliminada correctamente" });
+
+    await reserva.deleteOne();
+    res.status(200).json({ mensaje: 'Reserva eliminada correctamente.' });
   } catch (error) {
-    res.status(500).json({ mensaje: "No se pudo eliminar la reserva" });
+    res.status(500).json({ mensaje: 'No se pudo eliminar la reserva.' });
   }
 }
 
-module.exports = {
-  crear,
-  listarTodos,
-  listarUno,
-  actualizar,
-  eliminar,
-};
+module.exports = { find, findOne, findOneAndUpdate, findOneAndDelete, insertOne };

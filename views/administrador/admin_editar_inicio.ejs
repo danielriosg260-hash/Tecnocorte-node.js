@@ -1,0 +1,122 @@
+<%# Título: Editar inicio - TecnoCorte %>
+
+<%- include('../partials/admin-sidebar', { active: "inicio" }) %>
+<main class="ml-0 md:ml-64 flex-1 min-h-screen p-6 md:p-12 pb-24 md:pb-12 bg-surface">
+  <%- include('../partials/panel-header') %>
+  <div class="mx-auto max-w-3xl">
+    <div class="mb-8">
+      <p class="tc-eyebrow mb-3">Página principal</p>
+      <h1 class="tc-display text-4xl md:text-5xl">
+        Editar el <span class="tc-gold-text">inicio</span>
+      </h1>
+      <p class="mt-3 text-on-surface-variant">
+        Elige, entre los servicios y productos que ya existen, cuáles se
+        destacan en la página principal. No se crea nada nuevo aquí.
+      </p>
+    </div>
+
+    <form method="post" class="tc-form tc-form__grid">
+      
+
+      
+      <div class="tc-field--full">
+        <p class="tc-eyebrow mb-4">Servicios destacados</p>
+        <div class="tc-form__grid">
+          <label class="tc-field tc-field--always">
+            <select name="servicio_destacado_1" class="tc-field__input">
+              <option value="">(Automático: los dos primeros del catálogo)</option>
+              <% var _lista4 = (servicios || []); if (_lista4.length) { _lista4.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista4.length - 1 }; var _finDeLista = _lista4.length - 1; %>
+              <option
+                value="<%= servicio.nombre %>"
+                <% if (seleccion_servicios[0] == servicio.nombre) { %>selected<% } %>
+              >
+                <%= servicio.nombre %> — <%= servicio.minutos %> min
+              </option>
+              <% }); } %>
+            </select>
+            <span class="tc-field__label">Tarjeta principal</span>
+          </label>
+
+          <label class="tc-field tc-field--always">
+            <select name="servicio_destacado_2" class="tc-field__input">
+              <option value="">(Automático: los dos primeros del catálogo)</option>
+              <% var _lista5 = (servicios || []); if (_lista5.length) { _lista5.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista5.length - 1 }; var _finDeLista = _lista5.length - 1; %>
+              <option
+                value="<%= servicio.nombre %>"
+                <% if (seleccion_servicios[1] == servicio.nombre) { %>selected<% } %>
+              >
+                <%= servicio.nombre %> — <%= servicio.minutos %> min
+              </option>
+              <% }); } %>
+            </select>
+            <span class="tc-field__label">Segunda tarjeta</span>
+          </label>
+        </div>
+      </div>
+
+      
+      <div class="tc-field--full">
+        <p class="tc-eyebrow mb-4">Productos destacados de la tienda</p>
+        <div class="tc-form__grid">
+          <label class="tc-field tc-field--always">
+            <select name="producto_destacado_1" class="tc-field__input">
+              <option value="">
+                (Automático: <%= productos_por_defecto %>)
+              </option>
+              <% var _lista6 = (productos || []); if (_lista6.length) { _lista6.forEach(function (producto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista6.length - 1 }; var _finDeLista = _lista6.length - 1; %>
+              <option
+                value="<%= producto.id %>"
+                <% if (seleccion_productos[0] == producto.id) { %>selected<% } %>
+              >
+                <%= producto.nombre %> — $<%= Number(Number(producto.precio) || 0).toFixed(1) %>
+              </option>
+              <% }); } %>
+            </select>
+            <span class="tc-field__label">Producto principal (grande)</span>
+          </label>
+
+          <label class="tc-field tc-field--always">
+            <select name="producto_destacado_2" class="tc-field__input">
+              <option value="">
+                (Automático: <%= productos_por_defecto %>)
+              </option>
+              <% var _lista7 = (productos || []); if (_lista7.length) { _lista7.forEach(function (producto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista7.length - 1 }; var _finDeLista = _lista7.length - 1; %>
+              <option
+                value="<%= producto.id %>"
+                <% if (seleccion_productos[1] == producto.id) { %>selected<% } %>
+              >
+                <%= producto.nombre %> — $<%= Number(Number(producto.precio) || 0).toFixed(1) %>
+              </option>
+              <% }); } %>
+            </select>
+            <span class="tc-field__label">Segundo producto</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="tc-form__actions">
+        <button class="tc-btn tc-btn--gold" type="submit">
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Guardar inicio
+        </button>
+        <a
+          href="/?vista=publica"
+          target="_blank"
+          rel="noopener"
+          class="tc-btn tc-btn--ghost"
+        >
+          <span class="material-symbols-outlined text-[18px]">visibility</span>
+          Ver el inicio
+        </a>
+      </div>
+    </form>
+
+    <p class="tc-field__hint mt-6">
+      Si dejas una casilla en «Automático», la portada usa los servicios y
+      productos de siempre (<%= productos_por_defecto %>). Los servicios que el
+      Admin apruebe a los barberos también aparecen en esta lista.
+    </p>
+  </div>
+</main>
+<%- include('../partials/admin-mobile-nav', { active: "inicio" }) %>
+

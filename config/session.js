@@ -1,70 +1,91 @@
-const COOKIE_NAME = 'tc_session';
-const CART_COOKIE_NAME = 'tc_cart';
+const NOMBRE_SESION = 'tc_session';
+const NOMBRE_CARRITO = 'tc_cart';
 
-const isProduction = () => process.env.NODE_ENV === 'production';
+const esProduccion = () => process.env.NODE_ENV === 'production';
 
-const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: 'strict',
-  secure: isProduction(),
-  path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000
-};
+/** Lee una cookie del navegador por su nombre. */
+function obtenerCookie(req, nombre) {
+  const cabecera = req.headers.cookie;
+  if (!cabecera) return null;
 
-const getCookie = (req, name) => {
-  const header = req.headers.cookie;
-  if (!header) return null;
-  const value = header.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
-  if (!value) return null;
+  const parte = cabecera
+    .split(';')
+    .map((valor) => valor.trim())
+    .find((valor) => valor.startsWith(`${nombre}=`));
+
+  if (!parte) return null;
+
   try {
-    return decodeURIComponent(value.slice(name.length + 1));
+    return decodeURIComponent(parte.slice(nombre.length + 1));
   } catch {
     return null;
   }
-};
+}
 
-const getSessionToken = (req) => {
-  const authorization = req.headers.authorization;
-  if (authorization?.startsWith('Bearer ')) {
-    const token = authorization.slice(7).trim();
-    if (token) return token;
+/**
+ * Devuelve el token de sesión.
+ * Se acepta la cabecera Authorization para las pruebas de la API con Postman.
+ */
+function obtenerToken(req) {
+  const autorizacion = req.headers.authorization;
+
+  if (autorizacion && autorizacion.startsWith('Bearer ')) {
+    return autorizacion.slice(7).trim();
   }
-  return getCookie(req, COOKIE_NAME);
-};
 
-const setSessionCookie = (res, token) => res.cookie(COOKIE_NAME, token, sessionCookieOptions);
+  return obtenerCookie(req, NOMBRE_SESION);
+}
 
-const clearSessionCookie = (res) => res.clearCookie(COOKIE_NAME, {
-  httpOnly: true,
-  sameSite: 'strict',
-  secure: isProduction(),
-  path: '/'
-});
+/** Guarda el token JWT en una cookie httpOnly. */
+function guardarSesion(res, token) {
+  res.cookie(NOMBRE_SESION, token, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: esProduccion(),
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+}
 
-const readCart = (req) => {
-  const value = getCookie(req, CART_COOKIE_NAME);
-  if (!value) return [];
+/** Elimina la cookie de sesión. */
+function cerrarSesion(res) {
+  res.clearCookie(NOMBRE_SESION, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: esProduccion(),
+    path: '/'
+  });
+}
+
+/** Lee el carrito guardado en la cookie. */
+function leerCarrito(req) {
+  const valor = obtenerCookie(req, NOMBRE_CARRITO);
+  if (!valor) return [];
+
   try {
-    const cart = JSON.parse(value);
-    return Array.isArray(cart) ? cart : [];
+    const carrito = JSON.parse(valor);
+    return Array.isArray(carrito) ? carrito : [];
   } catch {
     return [];
   }
-};
+}
 
-const writeCart = (res, cart) => res.cookie(CART_COOKIE_NAME, JSON.stringify(cart), {
-  httpOnly: true,
-  sameSite: 'strict',
-  secure: isProduction(),
-  path: '/',
-  maxAge: 30 * 24 * 60 * 60 * 1000
-});
+/** Guarda el carrito en una cookie que dura 30 días. */
+function guardarCarrito(res, carrito) {
+  res.cookie(NOMBRE_CARRITO, JSON.stringify(carrito), {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: esProduccion(),
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  });
+}
 
 module.exports = {
-  clearSessionCookie,
-  getCookie,
-  getSessionToken,
-  readCart,
-  setSessionCookie,
-  writeCart
+  cerrarSesion,
+  guardarCarrito,
+  guardarSesion,
+  leerCarrito,
+  obtenerCookie,
+  obtenerToken
 };

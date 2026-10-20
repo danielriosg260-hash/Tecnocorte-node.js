@@ -1,37 +1,34 @@
+<!-- Navegación principal tipo pill: logo, enlaces, tema, notificaciones, carrito y sesión -->
 <header class="site-header fixed left-0 right-0 top-4 z-50 px-4">
   <nav class="pill-nav mx-auto flex w-full max-w-7xl items-center gap-3 rounded-[999px] px-4 py-3">
-    <a class="pill-brand inline-flex shrink-0 items-center rounded-full p-1" href="/" aria-label="TecnoCorte">
+    <a href="/" aria-label="TecnoCorte">
       <%- include('logo', { logo_class: 'h-10 w-10' }) %>
     </a>
 
-    <button class="pill-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="pill-mobile-menu" onclick="togglePillMenu(this)">
+    <%# Botón hamburguesa para el menú móvil %>
+    <button type="button" class="pill-menu-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="pill-mobile-menu" onclick="togglePillMenu(this)">
       <span class="material-symbols-outlined">menu</span>
     </button>
 
+    <%# Enlaces principales con resaltado según la página activa %>
     <div id="pill-mobile-menu" class="pill-nav-menu hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex" data-pill-nav>
       <span class="pill-nav-highlight" aria-hidden="true"></span>
-      <a data-pill-link class="pill-nav-link <% if (active === 'inicio') { %>is-active<% } %>" href="/">Inicio</a>
-      <a data-pill-link class="pill-nav-link <% if (active === 'servicios') { %>is-active<% } %>" href="/servicios">Servicios</a>
-      <a data-pill-link class="pill-nav-link <% if (active === 'tienda') { %>is-active<% } %>" href="/tienda">Tienda</a>
-      <a data-pill-link class="pill-nav-link <% if (active === 'barberias') { %>is-active<% } %>" href="/peluquerias">Barberías</a>
-      <a data-pill-link class="pill-nav-link <% if (active === 'contactos') { %>is-active<% } %>" href="/ayuda">Contactos</a>
+      <a data-pill-link class="pill-nav-link <%= active === 'inicio' ? 'is-active' : '' %>" href="/">Inicio</a>
+      <a data-pill-link class="pill-nav-link <%= active === 'servicios' ? 'is-active' : '' %>" href="/servicios">Servicios</a>
+      <a data-pill-link class="pill-nav-link <%= active === 'tienda' ? 'is-active' : '' %>" href="/tienda">Tienda</a>
+      <a data-pill-link class="pill-nav-link <%= active === 'barberias' ? 'is-active' : '' %>" href="/peluquerias">Barberías</a>
+      <a data-pill-link class="pill-nav-link <%= active === 'contactos' ? 'is-active' : '' %>" href="/ayuda">Contactos</a>
     </div>
 
-    <div class="pill-actions ml-auto flex shrink-0 items-center gap-2 text-primary">
+    <%# Acciones: tema, notificaciones, carrito y sesión %>
+    <div class="flex items-center gap-1">
       <button data-theme-toggle onclick="toggleTheme()" class="pill-action" title="Activar tema claro" type="button" aria-label="Activar tema claro">
         <span class="material-symbols-outlined theme-icon">light_mode</span>
       </button>
       <%- include('notificaciones-indicator') %>
       <%- include('carrito-indicator') %>
       <% if (logueado) { %>
-      <% if (logueado.rol === 'Admin' || logueado.rol === 'Barbero') { %>
-      <% const panelUrl = logueado.rol === 'Admin' ? '/admin' : '/barbero'; %>
-      <% const panelLabel = logueado.rol === 'Admin' ? 'Panel admin' : 'Mi panel'; %>
-      <a class="pill-text-action hidden sm:inline-flex" href="<%= panelUrl %>"><%= panelLabel %></a>
-      <% } %>
-      <% const profileUrl = logueado.rol === 'Admin' ? '/admin/perfil' : logueado.rol === 'Barbero' ? '/barbero/perfil' : '/perfil'; %>
-      <a class="pill-text-action hidden sm:inline-flex" href="<%= profileUrl %>">Perfil</a>
-      <form method="post" action="/logout" class="hidden sm:inline-flex"><button type="submit" class="pill-text-action">Salir</button></form>
+      <%- include('panel-header-actions', { sin_notificaciones: true }) %>
       <% } else { %>
       <a class="pill-text-action hidden sm:inline-flex" href="/login">Ingresar</a>
       <% } %>
@@ -39,15 +36,16 @@
   </nav>
 </header>
 
+<%# Notificaciones toast y sistema de carga %>
 <%- include('toast-notifications') %>
 <%- include('cargando') %>
 
 <script>
   function togglePillMenu(button) {
-    var menu = document.getElementById(button.getAttribute('aria-controls'));
-    var isOpen = menu.classList.toggle('is-open');
-    button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    button.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
-    button.querySelector('.material-symbols-outlined').textContent = isOpen ? 'close' : 'menu';
+    var menu = document.getElementById(button.getAttribute("aria-controls"));
+    var isOpen = menu.classList.toggle("is-open");
+    button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    button.setAttribute("aria-label", isOpen ? "Cerrar menú" : "Abrir menú");
+    button.querySelector(".material-symbols-outlined").textContent = isOpen ? "close" : "menu";
   }
 </script>

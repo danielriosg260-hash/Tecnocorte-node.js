@@ -10,4 +10,5 @@ yarn-error.log*
 .vscode/
 *.log
 backup-tecnocorte/
+backup/
 .env.bak

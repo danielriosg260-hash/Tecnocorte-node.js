@@ -1,0 +1,129 @@
+<%- include('../partials/admin-sidebar', { active: "galeria" }) %>
+<main class="ml-0 md:ml-64 flex-1 p-6 md:p-12 pb-24 md:pb-12">
+  <%- include('../partials/panel-header') %>
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-10">
+    <div>
+      <h1 class="font-headline text-3xl md:text-4xl text-primary">Galería</h1>
+      <p class="text-on-surface-variant mt-2">
+        Revisa y elimina fotos de las barberías que no cumplan las normas.
+      </p>
+    </div>
+    <a
+      class="py-3 px-5 rounded font-bold border border-primary/30 text-primary hover:bg-primary/10"
+      href="/admin/peluquerias"
+      >← Volver a barberías</a
+    >
+  </div>
+
+  
+  <div class="mb-8 flex flex-wrap items-center gap-2" id="galeria-filtros">
+    <button
+      type="button"
+      class="galeria-filtro is-active rounded-full border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/25"
+      data-peluqueria=""
+    >
+      Todas
+      <span class="ml-1 text-xs opacity-70">(<%= (fotos || []).length %>)</span>
+    </button>
+    <% var _lista19 = (peluquerias || []); if (_lista19.length) { _lista19.forEach(function (peluqueria, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista19.length - 1 }; var _finDeLista = _lista19.length - 1; %>
+    <button
+      type="button"
+      class="galeria-filtro rounded-full border border-outline-variant/40 bg-surface-container-high px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+      data-peluqueria="<%= peluqueria.id %>"
+    >
+      <%= peluqueria.nombre %>
+      <span class="ml-1 text-xs opacity-70"
+        >(<%= peluqueria.cantidad_fotos %>)</span
+      >
+    </button>
+    <% }); } %>
+    <span
+      id="galeria-vacio"
+      class="hidden text-sm text-on-surface-variant"
+      >Esta barbería aún no tiene fotos.</span
+    >
+  </div>
+
+  <% if (fotos) { %>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="galeria-grid">
+    <% var _lista20 = (fotos || []); if (_lista20.length) { _lista20.forEach(function (foto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista20.length - 1 }; var _finDeLista = _lista20.length - 1; %>
+    <figure
+      class="galeria-item bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/20 flex flex-col"
+      data-peluqueria="<%= foto.peluqueria.id %>"
+    >
+      <img
+        src="<%= foto.url %>"
+        alt="<%= ((foto.descripcion === undefined || foto.descripcion === null || foto.descripcion === '') ? "Foto" : foto.descripcion) %>"
+        class="h-48 w-full object-cover"
+      />
+      <figcaption class="p-4 flex-1 flex flex-col gap-2">
+        <span class="font-semibold text-on-surface"
+          ><%= foto.peluqueria.nombre %></span
+        >
+        <span class="text-xs text-on-surface-variant"
+          ><%= ((foto.descripcion === undefined || foto.descripcion === null || foto.descripcion === '') ? "Sin descripción" : foto.descripcion) %></span
+        >
+        <span class="text-xs text-on-surface-variant"
+          ><%= fmtFecha(foto.fecha, "d M Y") %></span
+        >
+        <form
+          method="post"
+          action="<%= `/admin/galeria/${foto.id}/eliminar` %>"
+          class="mt-auto"
+        >
+          <button
+            type="submit"
+            class="text-error text-sm font-semibold"
+            data-motivo="Estás a punto de eliminar esta foto de la galería de «<%= foto.peluqueria.nombre %>». Se avisará por correo a quien la subió."
+          >
+            Eliminar foto
+          </button>
+        </form>
+      </figcaption>
+    </figure>
+    <% }); } %>
+  </div>
+  <% } else { %>
+  <p class="text-on-surface-variant">
+    No hay fotos de galería registradas.
+  </p>
+  <% } %>
+</main>
+
+<script>
+  // Filtrado de la galería por peluquería (Todas / una barbería)
+  (function () {
+    var botones = document.querySelectorAll(".galeria-filtro");
+    var items = document.querySelectorAll(".galeria-item");
+    var vacio = document.getElementById("galeria-vacio");
+    if (!botones.length || !items.length) return;
+
+    botones.forEach(function (boton) {
+      boton.addEventListener("click", function () {
+        var id = boton.dataset.peluqueria;
+        var visibles = 0;
+
+        botones.forEach(function (otro) {
+          var activo = otro === boton;
+          otro.classList.toggle("is-active", activo);
+          otro.classList.toggle("border-primary/40", activo);
+          otro.classList.toggle("bg-primary/15", activo);
+          otro.classList.toggle("text-primary", activo);
+          otro.classList.toggle("border-outline-variant/40", !activo);
+          otro.classList.toggle("bg-surface-container-high", !activo);
+          otro.classList.toggle("text-on-surface-variant", !activo);
+        });
+
+        items.forEach(function (item) {
+          var coincide = !id || item.dataset.peluqueria === id;
+          item.classList.toggle("hidden", !coincide);
+          if (coincide) visibles++;
+        });
+
+        if (vacio) vacio.classList.toggle("hidden", visibles > 0);
+      });
+    });
+  })();
+</script>
+<%- include('../partials/admin-mobile-nav', { active: "galeria" }) %>
+

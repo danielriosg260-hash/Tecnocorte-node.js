@@ -1,0 +1,14 @@
+<%# Barra de navegación inferior para móviles del barbero %>
+<%
+  var activo = typeof active !== 'undefined' ? active : '';
+  var clases = function (nombre) {
+    return 'flex flex-col items-center space-y-1 text-on-surface-variant p-2 ' + (activo === nombre ? 'panel-glass-link--active' : '');
+  };
+%>
+<nav class="panel-glass-mobile md:hidden fixed bottom-0 w-full z-40 flex justify-around items-center px-4 py-3">
+  <a class="<%= clases('inicio') %>" href="/barbero"><span class="material-symbols-outlined">dashboard</span><span class="font-label text-[10px] uppercase tracking-wider">Inicio</span></a>
+  <a class="<%= clases('citas') %>" href="/barbero/nueva-cita"><span class="material-symbols-outlined">calendar_month</span><span class="font-label text-[10px] uppercase tracking-wider">Citas</span></a>
+  <a class="<%= clases('peluqueria') %>" href="/barbero/peluqueria"><span class="material-symbols-outlined">storefront</span><span class="font-label text-[10px] uppercase tracking-wider">Mi Peluquería</span></a>
+  <a class="<%= clases('perfil') %>" href="/barbero/perfil"><span class="material-symbols-outlined">person</span><span class="font-label text-[10px] uppercase tracking-wider">Perfil</span></a>
+  <a class="<%= clases('notificaciones') %>" href="/barbero/notificaciones"><span class="material-symbols-outlined">notifications</span><span class="font-label text-[10px] uppercase tracking-wider">Avisos</span></a>
+</nav>

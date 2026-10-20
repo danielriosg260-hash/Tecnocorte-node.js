@@ -5,14 +5,10 @@ const verificarToken = require('../middleware/auth');
 
 router.use(verificarToken);
 
-router.get('/', reservaController.listarTodos);
-
-router.get('/:id', reservaController.listarUno);
-
-router.post('/', reservaController.crear);
-
-router.put('/:id', reservaController.actualizar);
-
-router.delete('/:id', reservaController.eliminar);
+router.get('/', reservaController.find);
+router.get('/:id', reservaController.findOne);
+router.post('/', reservaController.insertOne);
+router.put('/:id', reservaController.findOneAndUpdate);
+router.delete('/:id', reservaController.findOneAndDelete);
 
 module.exports = router;

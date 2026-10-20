@@ -1,52 +1,73 @@
-const attempts = new Map();
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
+/**
+ * Limita la cantidad de intentos por IP y por correo.
+ * Se usa en el login, la verificación de correo y la recuperación de contraseña.
+ */
+const intentos = new Map();
+const VENTANA_MS = 15 * 60 * 1000;
+const MAX_INTENTOS = 5;
 
-const limitarPorCorreo = (prefijo, maxAttempts, mensaje) => (req, res, next) => {
-  const email = String(req.body?.email || req.query?.email || '').trim().toLowerCase();
-  const key = `${prefijo}:${req.ip}:${email}`;
-  const now = Date.now();
-  const current = (attempts.get(key) || []).filter((time) => time > now - WINDOW_MS);
-  if (current.length >= maxAttempts) {
-    res.set('Retry-After', String(Math.ceil((current[0] + WINDOW_MS - now) / 1000)));
-    return res.status(429).send(mensaje);
+function crearLimitador(prefijo, maximo, mensaje) {
+  return function limitar(req, res, next) {
+    const correo = String(req.body.email || req.body.user || req.query.email || '')
+      .trim()
+      .toLowerCase();
+    const clave = `${prefijo}:${req.ip}:${correo}`;
+    const ahora = Date.now();
+
+    const registros = (intentos.get(clave) || []).filter((hora) => hora > ahora - VENTANA_MS);
+
+    if (registros.length >= maximo) {
+      const espera = Math.ceil((registros[0] + VENTANA_MS - ahora) / 1000);
+      res.set('Retry-After', String(espera));
+      return res.status(429).send(mensaje);
+    }
+
+    intentos.set(clave, [...registros, ahora]);
+    next();
+  };
+}
+
+const limitarLogin = (req, res, next) => {
+  const correo = String(req.body.email || req.body.user || '')
+    .trim()
+    .toLowerCase();
+  const clave = `login:${req.ip}:${correo}`;
+  const ahora = Date.now();
+  const registros = (intentos.get(clave) || []).filter((hora) => hora > ahora - VENTANA_MS);
+
+  if (registros.length >= MAX_INTENTOS) {
+    const espera = Math.ceil((registros[0] + VENTANA_MS - ahora) / 1000);
+    res.set('Retry-After', String(espera));
+    return res.status(429).send('Demasiados intentos. Inténtalo de nuevo más tarde.');
   }
-  attempts.set(key, [...current, now]);
-  next();
-};
 
-const rateLimitLogin = (req, res, next) => {
-  const email = typeof req.body?.email === 'string'
-    ? req.body.email.trim().toLowerCase()
-    : typeof req.body?.user === 'string'
-      ? req.body.user.trim().toLowerCase()
-      : '';
-  const key = `${req.ip}:${email}`;
-  const now = Date.now();
-  const current = (attempts.get(key) || []).filter((time) => time > now - WINDOW_MS);
+  intentos.set(clave, [...registros, ahora]);
 
-  if (current.length >= MAX_ATTEMPTS) {
-    res.set('Retry-After', String(Math.ceil((current[0] + WINDOW_MS - now) / 1000)));
-    return res.status(429).json({ mensaje: 'Demasiados intentos. Inténtalo de nuevo más tarde.' });
-  }
-
-  attempts.set(key, [...current, now]);
+  // Si el login sale bien se borran los intentos fallidos.
   res.on('finish', () => {
-    if (res.statusCode >= 200 && res.statusCode < 300) attempts.delete(key);
+    if (res.statusCode >= 200 && res.statusCode < 300) intentos.delete(clave);
   });
+
   next();
 };
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, values] of attempts) {
-    const current = values.filter((time) => time > now - WINDOW_MS);
-    if (current.length) attempts.set(key, current);
-    else attempts.delete(key);
-  }
-}, WINDOW_MS).unref();
+limitarLogin.limitarVerificacion = crearLimitador(
+  'verificacion',
+  10,
+  'Demasiados intentos de verificación. Inténtalo más tarde.'
+);
+limitarLogin.limitarReenvio = crearLimitador(
+  'reenvio',
+  3,
+  'Demasiados reenvíos. Inténtalo más tarde.'
+);
+limitarLogin.limitarRecuperacion = crearLimitador(
+  'recuperacion',
+  3,
+  'Demasiadas solicitudes. Inténtalo más tarde.'
+);
 
-module.exports = rateLimitLogin;
-module.exports.limitarVerificacion = limitarPorCorreo('verification', 10, 'Demasiados intentos de verificación. Inténtalo más tarde.');
-module.exports.limitarReenvio = limitarPorCorreo('resend', 3, 'Demasiados reenvíos. Inténtalo más tarde.');
-module.exports.limitarRecuperacion = limitarPorCorreo('recovery', 3, 'Demasiadas solicitudes. Inténtalo más tarde.');
+module.exports = limitarLogin;
+module.exports.limitarRecuperacion = limitarLogin.limitarRecuperacion;
+module.exports.limitarReenvio = limitarLogin.limitarReenvio;
+module.exports.limitarVerificacion = limitarLogin.limitarVerificacion;

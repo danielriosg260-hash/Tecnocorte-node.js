@@ -1,203 +1,453 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>TecnoCorte</title>
+    <%- include('../partials/favicon') %>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <%- include('../partials/tema') %>
+    <link rel="stylesheet" href="/css/publicos/index.css" />
+  </head>
 
-<head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>TecnoCorte</title>
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Serif:wght@400;700;900&display=swap"
-    rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-    rel="stylesheet" />
-  <%- include('../partials/tema') %>
-  <style>
-    body {
-      background-color: var(--fondo);
-      color: var(--c-on-surface);
-    }
+  <body class="font-body antialiased bg-surface text-on-surface">
+    <%- include('../partials/site-nav', { active: "inicio" }) %>
 
-    .shadow-ambient {
-      box-shadow: 0 20px 40px rgba(242, 202, 80, 0.06);
-    }
+    <main class="pt-24">
+      <!-- Sección hero principal con botón de reserva -->
+      <section
+        class="relative flex min-h-[820px] items-center justify-center overflow-hidden bg-surface-container-low"
+      >
+        <div class="absolute inset-0 z-0">
+          <img
+            src="/images/corte_masculino.jpg"
+            alt="Barbería masculina profesional"
+            class="h-full w-full object-cover opacity-35"
+          />
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-surface via-surface/80 to-transparent"
+          ></div>
+        </div>
 
-    .divider-dot {
-      width: 4px;
-      height: 4px;
-      background-color: var(--c-primary);
-      border-radius: 50%;
-      margin: 0 auto;
-    }
-  </style>
-</head>
+        <div
+          class="relative z-10 mx-auto flex max-w-5xl flex-col items-center px-6 text-center"
+        >
+          <span
+            class="mb-6 block text-sm font-medium uppercase tracking-[0.2em] text-primary"
+            >TecnoCorte</span
+          >
+          <h1
+            class="mb-8 font-headline text-5xl font-black leading-tight tracking-tight text-on-surface md:text-7xl"
+          >
+            Tu <span class="heading-accent italic">Estilo</span>
+          </h1>
+          <p
+            class="mx-auto mb-12 max-w-2xl text-lg font-light leading-relaxed text-on-surface-variant md:text-xl"
+          >
+            Barbería de confianza para cortes modernos, arreglo de barba y
+            cuidado personal premium.
+          </p>
 
-<body class="font-body antialiased bg-surface text-on-surface">
-  <%- include('../partials/site-nav', { active: 'inicio' }) %>
+          
+          <% if (logueado) { %>
+          <a
+            href="/reservar-cita"
+            class="btn-brand inline-flex items-center justify-center gap-3 rounded-md px-10 py-4 text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:shadow-ambient active:scale-95"
+          >
+            Reservar Cita
+            <span
+              class="material-symbols-outlined text-lg"
+              style="font-variation-settings: &quot;FILL&quot; 1"
+              >arrow_right_alt</span
+            >
+          </a>
+          <% } else { %>
+          <a
+            href="/login"
+            class="btn-brand inline-flex items-center justify-center gap-3 rounded-md px-10 py-4 text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:shadow-ambient active:scale-95"
+          >
+            Reservar Cita
+            <span
+              class="material-symbols-outlined text-lg"
+              style="font-variation-settings: &quot;FILL&quot; 1"
+              >arrow_right_alt</span
+            >
+          </a>
+          <% } %>
+        </div>
+      </section>
 
-  <main class="pt-24">
-    <section class="relative flex min-h-[820px] items-center justify-center overflow-hidden bg-surface-container-low">
-      <div class="absolute inset-0 z-0">
-        <img src="/images/corte_masculino.jpg" alt="Barbería masculina profesional"
-          class="h-full w-full object-cover opacity-35" />
-        <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/80 to-transparent"></div>
+      <div class="flex h-32 items-center justify-center">
+        <div class="divider-dot"></div>
       </div>
 
-      <div class="relative z-10 mx-auto flex max-w-5xl flex-col items-center px-6 text-center">
-        <span class="mb-6 block text-sm font-medium uppercase tracking-[0.2em] text-primary">TecnoCorte</span>
-        <h1 class="mb-8 font-headline text-5xl font-black leading-tight tracking-tight text-on-surface md:text-7xl">
-           Tu <span class="heading-accent italic">Estilo</span>
-        </h1>
-        <p class="mx-auto mb-12 max-w-2xl text-lg font-light leading-relaxed text-on-surface-variant md:text-xl">
-          Barbería de confianza para cortes modernos, arreglo de barba y cuidado personal premium.
-        </p>
+      <section class="relative px-6 py-16 md:py-24">
+        <!-- Sección de servicios destacados (los elige el Admin con el botón de edición) -->
+        <div class="mx-auto max-w-7xl">
+          <div
+            class="mb-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
+          >
+            <div class="max-w-2xl">
+              <h2
+                class="font-headline text-4xl font-bold text-on-surface md:text-5xl"
+              >
+                Nuestros <span class="heading-accent">Servicios</span>
+              </h2>
+            </div>
+          </div>
 
-        <% if (logueado) { %>
-        <a href="/reservar-cita"
-           class="btn-brand inline-flex items-center justify-center gap-3 rounded-md px-10 py-4 text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:shadow-ambient active:scale-95">
-          Reservar Cita
-          <span class="material-symbols-outlined text-lg"
-            style="font-variation-settings: 'FILL' 1;">arrow_right_alt</span>
-        </a>
-        <% } else { %>
-        <a href="/login"
-           class="btn-brand inline-flex items-center justify-center gap-3 rounded-md px-10 py-4 text-sm font-bold uppercase tracking-[0.1em] transition-all duration-300 hover:shadow-ambient active:scale-95">
-          Reservar Cita
-          <span class="material-symbols-outlined text-lg"
-            style="font-variation-settings: 'FILL' 1;">arrow_right_alt</span>
-        </a>
-        <% } %>
-      </div>
-    </section>
-
-    <div class="flex h-32 items-center justify-center">
-      <div class="divider-dot"></div>
-    </div>
-
-    <section class="relative px-6 py-16 md:py-24">
-      <div class="mx-auto max-w-7xl">
-        <div class="mb-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div class="max-w-2xl">
-            <h2 class="font-headline text-4xl font-bold text-on-surface md:text-5xl">
-               Nuestros <span class="heading-accent">Servicios</span>
-            </h2>
+          <div class="grid items-stretch gap-8 md:grid-cols-2">
+            <% var _lista67 = (inicio_servicios || []); if (_lista67.length) { _lista67.forEach(function (servicio, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista67.length - 1 }; var _finDeLista = _lista67.length - 1; %>
+            <article
+              id="servicio-<%= (indice + 1) %>"
+              class="group flex h-full flex-col overflow-hidden rounded-[28px] border border-outline-variant/20 bg-surface-container-low shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1"
+            >
+              <div class="overflow-hidden">
+                <img
+                  src="<%= servicio.imagen %>"
+                  alt="<%= servicio.nombre %>"
+                  class="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-105 md:h-80"
+                />
+              </div>
+              <div class="p-7 md:p-8">
+                <div class="mb-4 flex items-center justify-between gap-4">
+                  <h3 class="font-headline text-2xl font-bold text-on-surface">
+                    <%= servicio.nombre %>
+                  </h3>
+                  <span
+                    class="text-sm font-semibold tracking-wider text-primary-container"
+                    ><%= servicio.minutos %> MIN</span
+                  >
+                </div>
+                <p
+                  class="mb-6 text-base leading-relaxed text-on-surface-variant"
+                >
+                  <%= servicio.descripcion %>
+                </p>
+                <a
+                  href="/servicios?servicio=<%= encodeURIComponent(servicio.nombre === undefined || servicio.nombre === null ? '' : servicio.nombre) %>"
+                  class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] text-primary transition-all group-hover:gap-3"
+                >
+                  Ver más
+                  <span class="material-symbols-outlined text-sm">east</span>
+                </a>
+              </div>
+            </article>
+            <% }); } %>
           </div>
         </div>
+      </section>
 
-        <div class="grid items-stretch gap-8 md:grid-cols-2">
-          <article
-            id="servicio-corte" class="group flex h-full flex-col overflow-hidden rounded-[28px] border border-outline-variant/20 bg-surface-container-low shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1">
-            <div class="overflow-hidden">
-              <img src="/images/corte_cabello.jpeg" alt="Corte de cabello masculino"
-                class="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-105 md:h-80" />
-            </div>
-            <div class="p-7 md:p-8">
-              <div class="mb-4 flex items-center justify-between gap-4">
-                <h3 class="font-headline text-2xl font-bold text-on-surface">Corte Técnico</h3>
-                <span class="text-sm font-semibold tracking-wider text-primary-container">45 MIN</span>
-              </div>
-              <p class="mb-6 text-base leading-relaxed text-on-surface-variant">Estilo personalizado con precisión,
-                lavado y asesoría para realzar tus facciones.</p>
-              <a href="/servicios?servicio=corte#servicio-corte"
-                class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] text-primary transition-all group-hover:gap-3">
-                Ver más
-                <span class="material-symbols-outlined text-sm">east</span>
-              </a>
-            </div>
-          </article>
+      <section class="bg-surface-container-lowest px-6 py-16 md:py-24">
+        <!-- Sección de tienda con los productos reales del catálogo -->
+        <div class="mx-auto max-w-7xl">
+          <div class="mb-12 text-center">
+            <h2
+              class="font-headline text-4xl font-bold text-on-surface md:text-5xl"
+            >
+              Nuestra <span class="heading-accent">Tienda</span>
+            </h2>
+            <p class="mx-auto mt-4 max-w-2xl text-lg text-on-surface-variant">
+              Productos y herramientas para tu cuidado personal.
+            </p>
+          </div>
 
-          <article
-            id="servicio-barba" class="group flex h-full flex-col overflow-hidden rounded-[28px] border border-outline-variant/20 bg-surface-container-low shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1">
-            <div class="overflow-hidden">
-              <img src="/images/arreglo_barba.jpeg" alt="Arreglo de barba masculina"
-                class="h-72 w-full object-cover transition-transform duration-700 group-hover:scale-105 md:h-80" />
-            </div>
-            <div class="p-7 md:p-8">
-              <div class="mb-4 flex items-center justify-between gap-4">
-                <h3 class="font-headline text-2xl font-bold text-on-surface">Arreglo de Barba</h3>
-                <span class="text-sm font-semibold tracking-wider text-primary-container">30 MIN</span>
-              </div>
-              <p class="mb-6 text-base leading-relaxed text-on-surface-variant">Perfilado fino con toalla caliente,
-                cuidado hidratante y forma impecable.</p>
-              <a href="/servicios?servicio=barba#servicio-barba"
-                class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.12em] text-primary transition-all group-hover:gap-3">
-                Ver más
-                <span class="material-symbols-outlined text-sm">east</span>
-              </a>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="bg-surface-container-lowest px-6 py-16 md:py-24">
-      <div class="mx-auto max-w-7xl">
-        <div class="mb-12 text-center">
-          <h2 class="font-headline text-4xl font-bold text-on-surface md:text-5xl">
-             Nuestra <span class="heading-accent">Tienda</span>
-          </h2>
-          <p class="mx-auto mt-4 max-w-2xl text-lg text-on-surface-variant">Productos y herramientas para tu cuidado
-            personal.</p>
-        </div>
-
-        <div class="grid gap-6 md:grid-cols-3">
-          <a href="/tienda"
-            class="group md:col-span-2 block overflow-hidden rounded-[28px] bg-surface-container-low text-inherit no-underline shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1 hover:no-underline">
-            <div class="relative h-full min-h-[360px] bg-surface-container-low">
-              <img src="/images/pomada_barba.jpeg" alt="Productos para barbería"
-                class="h-full w-full object-cover opacity-80" />
-              <div class="absolute inset-0 bg-gradient-to-t from-surface-dim via-surface/35 to-transparent"></div>
-              <div class="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-4 p-8">
-                <div>
+          <div class="grid gap-6 md:grid-cols-3">
+            <% var _lista68 = (inicio_productos || []); if (_lista68.length) { _lista68.forEach(function (producto, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista68.length - 1 }; var _finDeLista = _lista68.length - 1; %>
+            <a
+              href="/tienda"
+              class="group <% if ((indice === 0)) { %>md:col-span-2<% } %> block overflow-hidden rounded-[28px] bg-surface-container-low text-inherit no-underline shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1 hover:no-underline"
+            >
+              <div class="relative h-full min-h-[360px] bg-surface-container-low">
+                <img
+                  src="<%= producto.imagen || producto.imagen_respaldo %>"
+                  alt="<%= producto.nombre %>"
+                  class="h-full w-full object-cover opacity-80"
+                />
+                <div
+                  class="absolute inset-0 bg-gradient-to-t from-surface-dim <% if ((indice === 0)) { %>via-surface/35<% } %> to-transparent"
+                ></div>
+                <div
+                  class="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-4 <% if ((indice === 0)) { %>p-8<% } else { %>p-6<% } %>"
+                >
+                  <div>
+                    <span
+                      class="mb-3 inline-block rounded-full bg-surface-container-highest px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant"
+                      ><%= producto.categoria_display %></span
+                    >
+                    <h3
+                      class="font-headline <% if ((indice === 0)) { %>text-3xl<% } else { %>text-2xl<% } %> font-bold text-on-surface"
+                    >
+                      <%= producto.nombre %>
+                    </h3>
+                  </div>
                   <span
-                    class="mb-3 inline-block rounded-full bg-surface-container-highest px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Styling</span>
-                  <h3 class="font-headline text-3xl font-bold text-on-surface">Pomada para Cabello</h3>
-                </div>
-                <span class="text-xl font-bold text-primary">$85.000</span>
-              </div>
-            </div>
-          </a>
-
-          <a href="/tienda"
-            class="group block overflow-hidden rounded-[28px] bg-surface-container-low text-inherit no-underline shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-1 hover:no-underline">
-            <div class="relative h-full min-h-[360px]">
-              <img src="/images/aceite_barba.jpeg" alt="Aceite para barba"
-                class="h-full w-full object-cover opacity-80" />
-              <div class="absolute inset-0 bg-gradient-to-t from-surface-dim to-transparent"></div>
-              <div class="absolute bottom-0 left-0 right-0 p-6">
-                <span
-                  class="mb-2 inline-block rounded-full bg-surface-container-highest px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Cuidado</span>
-                <h3 class="font-headline text-2xl font-bold text-on-surface">Aceite de Barba</h3>
-                <div class="mt-4 flex items-center justify-between">
-                  <span class="text-lg font-bold text-primary">$120.000</span>
-                  
+                    class="<% if ((indice === 0)) { %>text-xl<% } else { %>text-lg<% } %> font-bold text-primary"
+                    >$<%= Number(Number(producto.precio) || 0).toFixed(1) %></span
+                  >
                 </div>
               </div>
-            </div>
-          </a>
+            </a>
+            <% }); } %>
+          </div>
         </div>
+      </section>
+
+      <section id="resenas" class="relative px-6 py-16 md:py-24">
+        <!-- Reseñas reales de clientes (se publican si el Admin lo permite) -->
+        <div class="mx-auto max-w-7xl">
+          <div class="mb-12 text-center">
+            <h2
+              class="font-headline text-4xl font-bold text-on-surface md:text-5xl"
+            >
+              Lo que dicen nuestros <span class="heading-accent">Clientes</span>
+            </h2>
+            <p class="mx-auto mt-4 max-w-2xl text-lg text-on-surface-variant">
+              Reseñas reales que dejan los clientes.
+            </p>
+          </div>
+
+          <!-- Reseña escrita desde la portada: máximo dos por persona -->
+          <div class="mx-auto mb-12 max-w-2xl">
+            <% if (logueado && logueado.rol == "Cliente") { %> <% if (puede_resenar) { %>
+            <form
+              method="post"
+              action="/resenas"
+              class="tc-glass rounded-2xl p-6 md:p-8"
+              data-form-resena
+            >
+              
+              <p class="font-headline text-xl font-bold text-on-surface">
+                Deja tu reseña
+              </p>
+              <p class="mt-1 mb-4 text-sm text-on-surface-variant">
+                Te quedan <%= resenas_restantes %> de <%= resenas_por_persona %>
+                reseñas.
+              </p>
+              <div class="mb-4 flex items-center gap-1" data-estrellas>
+                <% var _lista69 = Array.from(String("12345")); if (_lista69.length) { _lista69.forEach(function (i, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista69.length - 1 }; var _finDeLista = _lista69.length - 1; %>
+                <button
+                  type="button"
+                  data-valor="<%= (indice + 1) %>"
+                  class="leading-none"
+                  aria-label="<%= (indice + 1) %> estrellas"
+                >
+                  <span
+                    class="material-symbols-outlined text-3xl text-primary/30 transition-colors"
+                    data-estrella="<%= (indice + 1) %>"
+                    >star</span
+                  >
+                </button>
+                <% }); } %>
+              </div>
+              <input
+                type="hidden"
+                name="puntuacion"
+                value="0"
+                data-puntuacion
+              />
+              <textarea
+                name="comentario"
+                rows="3"
+                maxlength="500"
+                placeholder="Cuéntanos cómo fue tu experiencia..."
+                class="w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none"
+              ></textarea>
+              <button
+                type="submit"
+                class="btn-brand mt-4 inline-flex items-center gap-2 rounded-md px-6 py-3 text-xs font-bold uppercase tracking-[0.14em]"
+              >
+                Publicar reseña
+              </button>
+            </form>
+            <% } else { %>
+            <p
+              class="tc-glass rounded-2xl px-6 py-4 text-center text-sm text-on-surface-variant"
+            >
+              Ya usaste tus <%= resenas_por_persona %> reseñas permitidas.
+              ¡Gracias!
+            </p>
+            <% } %> <% } else if (!(logueado)) { %>
+            <div
+              class="tc-glass flex flex-col items-center gap-3 rounded-2xl px-6 py-6 text-center"
+            >
+              <p class="text-sm text-on-surface-variant">
+                ¿Ya te atendimos? Cuéntanos cómo fue.
+              </p>
+              <a
+                href="/login"
+                class="btn-brand inline-flex items-center gap-2 rounded-md px-6 py-3 text-xs font-bold uppercase tracking-[0.14em]"
+                >Ingresar para dejar tu reseña</a
+              >
+            </div>
+            <% } %>
+          </div>
+
+          <% if (inicio_resenas) { %>
+          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <% var _lista70 = (inicio_resenas || []); if (_lista70.length) { _lista70.forEach(function (resena, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista70.length - 1 }; var _finDeLista = _lista70.length - 1; %>
+            <article
+              class="tc-glass flex h-full flex-col rounded-2xl p-6"
+              <% if ((indice + 1) > resenas_visibles) { %>hidden data-resena-extra<% } %>
+            >
+              <div class="mb-3 flex items-center gap-1">
+                <% var _lista71 = Array.from(String("12345")); if (_lista71.length) { _lista71.forEach(function (i, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista71.length - 1 }; var _finDeLista = _lista71.length - 1; %><% if ((indice + 1) <= resena.puntuacion) { %>
+                <span
+                  class="material-symbols-outlined text-lg text-primary"
+                  style="font-variation-settings: &quot;FILL&quot; 1"
+                  >star</span
+                >
+                <% } else { %>
+                <span class="material-symbols-outlined text-lg text-primary/30"
+                  >star</span
+                >
+                <% } %><% }); } %>
+              </div>
+
+              <% if (resena.comentario) { %>
+              <p
+                class="mb-4 flex-1 text-base leading-relaxed text-on-surface-variant"
+              >
+                “<%= resena.comentario %>”
+              </p>
+              <% } else { %>
+              <p class="mb-4 flex-1 text-base italic text-on-surface-variant/70">
+                Reseña sin comentario.
+              </p>
+              <% } %>
+
+              <div class="mt-2 border-t border-outline-variant/15 pt-4">
+                <p class="font-headline text-base font-bold text-on-surface">
+                  <%= resena.cliente.nombre %> <%= String(resena.cliente.apellido === undefined || resena.cliente.apellido === null ? '' : resena.cliente.apellido).slice(0, 1) %>.
+                </p>
+                <p class="mt-1 text-xs text-on-surface-variant">
+                  <% if (resena.peluquero) { %>Con <%= resena.peluquero.nombre %> · <% } %><%= fmtFecha(resena.fecha, "d/m/Y") %>
+                </p>
+              </div>
+            </article>
+            <% }); } %>
+          </div>
+
+          <% if ((inicio_resenas || []).length > resenas_visibles) { %>
+          <div class="mt-10 flex justify-center">
+            <button
+              type="button"
+              data-resenas-ver-mas
+              class="btn-brand inline-flex items-center gap-3 rounded-md px-8 py-4 text-sm font-bold uppercase tracking-[0.14em] transition-transform duration-300 hover:scale-[1.02] active:scale-95"
+            >
+              Ver más reseñas
+              <span class="material-symbols-outlined text-xl">expand_more</span>
+            </button>
+          </div>
+          <% } %> <% } else { %>
+          <div class="tc-glass mx-auto max-w-2xl rounded-2xl p-10 text-center">
+            <span class="material-symbols-outlined text-4xl text-primary"
+              >rate_review</span
+            >
+            <p class="mt-4 text-lg text-on-surface">Todavía no hay reseñas.</p>
+            <p class="mt-2 text-sm text-on-surface-variant">
+              Aquí aparecerán las reseñas reales de los clientes en cuanto dejen
+              la primera.
+            </p>
+          </div>
+          <% } %>
+        </div>
+      </section>
+    </main>
+
+    <!-- Botón de edición del inicio: solo lo ve el Admin -->
+    <% if (logueado && logueado.rol == "Admin") { %>
+    <a
+      href="/admin/editar-inicio"
+      class="btn-brand fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-[0.14em] shadow-[0_18px_40px_-12px_rgba(184,137,40,0.7)] transition-transform duration-300 hover:scale-[1.03] active:scale-95"
+      title="Elegir los servicios y productos que se destacan en el inicio"
+    >
+      <span class="material-symbols-outlined text-lg">edit</span>
+      Editar inicio
+    </a>
+    <% } %>
+
+    <!-- Pie de página con enlaces de utilidad -->
+    <footer
+      class="flex w-full flex-col items-center gap-8 border-t border-outline-variant/10 bg-surface-container-lowest px-8 pb-8 pt-16"
+    >
+      <div class="font-headline text-xl font-bold text-primary">TecnoCorte</div>
+      <nav
+        class="flex flex-wrap justify-center gap-6 text-sm text-on-surface-variant"
+      >
+        <a
+          class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
+          href="/politicas"
+          >Privacidad</a
+        >
+          <a class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100" href="/politicas">Políticas de Privacidad y del Proyecto</a>
+        <a
+          class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
+          href="/ayuda"
+          >Términos</a
+        >
+        <a
+          class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
+          href="/ayuda"
+          >Soporte</a
+        >
+        <a
+          class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
+          href="/ayuda"
+          >Franquicias</a
+        >
+      </nav>
+      <div class="mt-4 text-center text-sm text-on-surface-variant opacity-60">
+        © 2026 TecnoCorte. Todos los derechos reservados.
       </div>
-    </section>
-  </main>
+    </footer>
 
-  <footer
-    class="flex w-full flex-col items-center gap-8 border-t border-outline-variant/10 bg-surface-container-lowest px-8 pb-8 pt-16">
-    <div class="font-headline text-xl font-bold text-primary">TecnoCorte</div>
-    <nav class="flex flex-wrap justify-center gap-6 text-sm text-on-surface-variant">
-      <a class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
-        href="/ayuda">Privacidad</a>
-      <a class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
-        href="/ayuda">Términos</a>
-      <a class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
-        href="/ayuda">Soporte</a>
-      <a class="opacity-80 transition-colors duration-300 hover:text-primary hover:opacity-100"
-        href="/ayuda">Franquicias</a>
-    </nav>
-    <div class="mt-4 text-center text-sm text-on-surface-variant opacity-60">© 2026 TecnoCorte. Todos los derechos
-      reservados.</div>
-  </footer>
+    <script>
+      // Despliega las reseñas que quedan ocultas en el inicio.
+      (function () {
+        var boton = document.querySelector("[data-resenas-ver-mas]");
+        if (!boton) return;
+        boton.addEventListener("click", function () {
+          document
+            .querySelectorAll("[data-resena-extra]")
+            .forEach(function (resena) {
+              resena.removeAttribute("hidden");
+            });
+          boton.remove();
+        });
+      })();
 
-  <%- include('../partials/cargando') %>
-</body>
-
+      // Estrellas del formulario de reseña de la portada.
+      (function () {
+        var caja = document.querySelector("[data-estrellas]");
+        if (!caja) return;
+        var oculto = document.querySelector("[data-puntuacion]");
+        var estrellas = caja.querySelectorAll("[data-estrella]");
+        function pintar(valor) {
+          estrellas.forEach(function (estrella) {
+            var llena = Number(estrella.getAttribute("data-estrella")) <= valor;
+            estrella.classList.toggle("text-primary", llena);
+            estrella.classList.toggle("text-primary/30", !llena);
+            estrella.style.fontVariationSettings = llena ? '"FILL" 1' : "";
+          });
+        }
+        caja.querySelectorAll("[data-valor]").forEach(function (boton) {
+          boton.addEventListener("click", function () {
+            var valor = Number(boton.getAttribute("data-valor"));
+            oculto.value = valor;
+            pintar(valor);
+          });
+        });
+      })();
+    </script>
+  </body>
 </html>
+

@@ -1,0 +1,101 @@
+<%# Título: Mi peluquería - TecnoCorte %>
+
+<%- include('../partials/peluquero-sidebar', { active: "peluqueria" }) %>
+<main class="md:ml-72 flex-1 min-h-screen p-6 md:p-12">
+  <%- include('../partials/panel-header') %>
+  <div class="max-w-3xl mx-auto">
+    <div class="mb-8">
+      <p class="tc-eyebrow mb-3">Mi sede</p>
+      <h1 class="tc-display text-4xl md:text-5xl">
+        Mi <span class="tc-gold-text">peluquería</span>
+      </h1>
+      <p class="mt-3 text-on-surface-variant">
+        Actualiza la información que ven los clientes cuando reservan contigo.
+      </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="tc-form tc-form__grid">
+      
+
+      <% if (peluqueria.imagen) { %>
+      <div class="tc-field--full">
+        <img
+          src="<%= peluqueria.imagen %>"
+          alt="<%= peluqueria.nombre %>"
+          class="h-52 w-full rounded-xl border border-primary/25 object-cover"
+        />
+      </div>
+      <% } %>
+
+      <label class="tc-field tc-field--full">
+        <input
+          required
+          name="nombre"
+          value="<%= peluqueria.nombre %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Nombre de la barbería</span>
+      </label>
+
+      <label class="tc-field">
+        <input
+          required
+          name="ubicacion"
+          value="<%= peluqueria.ubicacion %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Ubicación</span>
+      </label>
+
+      <label class="tc-field">
+        <input
+          name="telefono"
+          value="<%= ((peluqueria.telefono === undefined || peluqueria.telefono === null || peluqueria.telefono === '') ? "" : peluqueria.telefono) %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Teléfono</span>
+      </label>
+
+      <label class="tc-field tc-field--full">
+        <textarea
+          name="descripcion"
+          rows="4"
+          placeholder=" "
+          class="tc-field__input"
+        ><%= ((peluqueria.descripcion === undefined || peluqueria.descripcion === null || peluqueria.descripcion === '') ? "" : peluqueria.descripcion) %></textarea>
+        <span class="tc-field__label"
+          >Descripción (tu barbería, tu equipo, servicios especiales...)</span
+        >
+      </label>
+
+      <div class="tc-field--full space-y-3">
+        <p class="tc-eyebrow">Foto de portada</p>
+        <label class="tc-field tc-field--always">
+          <input type="file" name="imagen" accept="image/*" class="tc-field__input" />
+          <span class="tc-field__label">Imagen (JPG, PNG o WEBP)</span>
+        </label>
+        <% if (peluqueria.imagen) { %>
+        <span class="tc-field__hint"
+          >Sube una nueva imagen para reemplazar la actual.</span
+        >
+        <% } %>
+      </div>
+
+      <div class="tc-form__actions">
+        <button class="tc-btn tc-btn--gold" type="submit">
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Guardar cambios
+        </button>
+        <a href="/barbero/galeria" class="tc-btn tc-btn--ghost">
+          <span class="material-symbols-outlined text-[18px]">photo_library</span>
+          Galería de fotos
+        </a>
+      </div>
+    </form>
+  </div>
+</main>
+<%- include('../partials/peluquero-mobile-nav', { active: "peluqueria" }) %>
+

@@ -1,19 +1,143 @@
-<% // Layout: dashboard %>
-<%- include('../partials/admin-sidebar', { active: 'productos' }) %>
-<main class="ml-64 flex-1 p-12">
-<a href="/admin/productos" class="text-primary">← Volver a productos</a>
-<div class="max-w-xl bg-surface-container-low p-8 rounded-xl mt-6">
-<h1 class="font-headline text-3xl mb-6"><% if (producto) { %>Editar<% } else { %>Nuevo<% } %> producto</h1>
-<form method="post" class="space-y-5"><!-- csrf: auth JWT -->
-<input required name="nombre" value="<%= producto ? producto.nombre : '' %>" placeholder="Nombre" class="w-full rounded bg-surface-container-high border-0 p-3">
-<textarea name="descripcion" placeholder="Descripción" class="w-full rounded bg-surface-container-high border-0 p-3"><%= producto ? producto.descripcion || '' : '' %></textarea>
-<div class="grid grid-cols-2 gap-4">
-<input required type="number" min="0" name="precio" value="<%= producto ? producto.precio : '' %>" placeholder="Precio" class="rounded bg-surface-container-high border-0 p-3">
-<input required type="number" min="0" name="stock" value="<%= producto ? producto.stock || 0 : 0 %>" placeholder="Stock" class="rounded bg-surface-container-high border-0 p-3">
-</div>
-<select name="categoria" class="w-full rounded bg-surface-container-high border-0 p-3"><% if (categorias) { categorias.forEach(function(categoria) { %><option value="<%= categoria[0] %>" <% if (producto && producto.categoria === categoria[0]) { %>selected<% } %>><%= categoria[1] %></option><% }); } %></select>
-<label class="flex gap-2"><input type="checkbox" name="disponible" <% if (!producto || producto.disponible) { %>checked<% } %>> Disponible en tienda</label>
-<button class="btn-gold-gradient px-5 py-3 rounded font-bold">Guardar producto</button>
-</form>
-</div>
+<%- include('../partials/admin-sidebar', { active: "productos" }) %>
+<main class="ml-0 md:ml-64 flex-1 p-6 md:p-12 pb-24 md:pb-12">
+  <%- include('../partials/panel-header') %>
+  <div class="max-w-3xl mx-auto">
+    <a href="/admin/productos" class="text-primary"
+      >← Volver a productos</a
+    >
+
+    <div class="mt-6 mb-8">
+      <p class="tc-eyebrow mb-3">Catálogo</p>
+      <h1 class="tc-display text-4xl md:text-5xl">
+        <% if (producto) { %>Editar<% } else { %>Nuevo<% } %>
+        <span class="tc-gold-text">producto</span>
+      </h1>
+      <p class="mt-3 text-on-surface-variant">
+        Completa la ficha del producto. Los campos con fondo más claro se
+        iluminan en dorado al enfocarlos.
+      </p>
+    </div>
+
+    <form
+      method="post"
+      enctype="multipart/form-data"
+      class="tc-form tc-form__grid"
+    >
+      
+
+      <label class="tc-field tc-field--full">
+        <input
+          required
+          name="nombre"
+          value="<%= ((producto.nombre === undefined || producto.nombre === null || producto.nombre === '') ? "" : producto.nombre) %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Nombre del producto</span>
+      </label>
+
+      <label class="tc-field tc-field--full">
+        <textarea
+          name="descripcion"
+          placeholder=" "
+          class="tc-field__input"
+          rows="3"
+        ><%= ((producto.descripcion === undefined || producto.descripcion === null || producto.descripcion === '') ? "" : producto.descripcion) %></textarea>
+        <span class="tc-field__label">Descripción</span>
+      </label>
+
+      
+      <div class="tc-field--full space-y-3">
+        <p class="tc-eyebrow">Foto del producto</p>
+        <% if (producto.imagen) { %>
+        <img
+          src="<%= producto.imagen %>"
+          alt="<%= producto.nombre %>"
+          class="h-48 w-full rounded-xl object-cover border border-primary/25"
+        />
+        <label class="tc-switch">
+          <input type="checkbox" name="quitar_imagen" />
+          <span class="text-error">Quitar la foto actual</span>
+        </label>
+        <% } %>
+        <label class="tc-field tc-field--always">
+          <input
+            type="file"
+            name="imagen"
+            accept="image/*"
+            class="tc-field__input"
+          />
+          <span class="tc-field__label">Imagen (JPG, PNG o WEBP)</span>
+        </label>
+        <span class="tc-field__hint"
+          >Si subes una nueva imagen se guarda en la base de datos.</span
+        >
+      </div>
+
+      <label class="tc-field">
+        <input
+          required
+          type="number"
+          min="0"
+          name="precio"
+          value="<%= ((producto.precio === undefined || producto.precio === null || producto.precio === '') ? "" : producto.precio) %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Precio (COP)</span>
+      </label>
+
+      <label class="tc-field">
+        <input
+          required
+          type="number"
+          min="0"
+          name="stock"
+          value="<%= ((producto.stock === undefined || producto.stock === null || producto.stock === '') ? "0" : producto.stock) %>"
+          placeholder=" "
+          class="tc-field__input"
+        />
+        <span class="tc-field__label">Stock disponible</span>
+      </label>
+
+      <label class="tc-field tc-field--always">
+        <select name="categoria" class="tc-field__input">
+          <% var _lista11 = (categorias || []); if (_lista11.length) { _lista11.forEach(function (categoria, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista11.length - 1 }; var _finDeLista = _lista11.length - 1; %>
+          
+          <option
+            value="<%= categoria[0] %>"
+            <% if (producto.categoria == categoria[0]) { %>selected<% } %>
+          >
+            <%= categoria[1] %>
+          </option>
+          <% }); } %>
+        </select>
+        <span class="tc-field__label">Categoría</span>
+      </label>
+
+      <div class="tc-field--full">
+        <label class="tc-switch">
+          <input
+            type="checkbox"
+            name="disponible"
+            <% if (!(producto) || producto.disponible) { %>checked<% } %>
+          />
+          
+          <span>Disponible en la tienda</span>
+        </label>
+      </div>
+
+      <div class="tc-form__actions">
+        <button class="tc-btn tc-btn--gold" type="submit">
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Guardar producto
+        </button>
+        <a href="/admin/productos" class="tc-btn tc-btn--ghost"
+          >Cancelar</a
+        >
+      </div>
+    </form>
+  </div>
 </main>
+<%- include('../partials/admin-mobile-nav', { active: "productos" }) %>
+

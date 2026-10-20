@@ -1,0 +1,69 @@
+<%# Título: Pedidos - TecnoCorte %>
+
+<%- include('../partials/admin-sidebar', { active: 'pedidos' }) %>
+<main class="ml-0 md:ml-64 flex-1 min-h-screen p-4 sm:p-6 md:p-12 pb-24 md:pb-12">
+  <%- include('../partials/panel-header') %>
+  <header class="mb-8 flex flex-wrap items-end justify-between gap-4 pr-12 sm:pr-16">
+    <div>
+      <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">Tienda</p>
+      <h1 class="mt-2 font-headline text-3xl text-on-surface sm:text-4xl">Pedidos</h1>
+      <p class="mt-2 max-w-2xl text-sm text-on-surface-variant sm:text-base">
+        Marca cuándo el pedido está listo, confirma el pago en tienda y registra la entrega.
+      </p>
+    </div>
+  </header>
+  <div class="mb-6"><a href="/admin/exportar/pedidos" class="inline-flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary"><span class="material-symbols-outlined text-base">download</span>Exportar pedidos a Excel</a></div>
+
+  <section class="grid gap-5">
+    <% var _lista32 = (pedidos || []); if (_lista32.length) { _lista32.forEach(function (pedido, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista32.length - 1 }; var _finDeLista = _lista32.length - 1; %>
+    <article class="overflow-hidden rounded-2xl bg-surface-container-low p-4 shadow-sm sm:p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant/10 pb-4">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-widest text-primary">Pedido #<%= pedido.id %></p>
+          <h2 class="mt-1 text-lg font-bold text-on-surface"><%= pedido.cliente.nombre %> <%= pedido.cliente.apellido %></h2>
+          <p class="text-sm text-on-surface-variant"><%= fmtFecha(pedido.fecha, "d/m/Y H:i") %> · <%= pedido.cliente.email %></p>
+        </div>
+        <div class="text-left sm:text-right">
+          <p class="font-headline text-2xl text-primary">$<%= Number(Number(pedido.total) || 0).toFixed(1) %> COP</p>
+          <p class="text-sm text-on-surface-variant">
+            <% if (pedido.pago_confirmado) { %>Pago confirmado<% } else { %>Pago pendiente en tienda<% } %>
+          </p>
+        </div>
+      </div>
+
+      <div class="my-4 grid gap-2 text-sm text-on-surface-variant sm:grid-cols-2">
+        <% var _lista33 = (pedido.productos || []); if (_lista33.length) { _lista33.forEach(function (item, indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista33.length - 1 }; var _finDeLista = _lista33.length - 1; %>
+        <div class="flex justify-between gap-4 rounded-lg bg-surface-container-high/50 px-3 py-2">
+          <span class="min-w-0 truncate"><%= item.producto.nombre %> ×<%= item.cantidad %></span>
+          <span class="shrink-0 text-on-surface">$<%= Number(Number(item.precio) || 0).toFixed(1) %></span>
+        </div>
+        <% }); } %>
+      </div>
+
+      <form method="post" action="<%= `/admin/pedidos/${pedido.id}` %>" class="grid gap-4 rounded-xl border border-outline-variant/10 bg-surface-container-high/30 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+        
+        <label class="grid gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+          Estado del pedido
+          <select name="estado" class="min-h-11 rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 text-sm font-normal normal-case tracking-normal text-on-surface">
+            <% var _lista34 = (estados_pedido || []); if (_lista34.length) { _lista34.forEach(function ([valor, etiqueta], indice) { let forloop = { counter: indice + 1, counter0: indice, first: indice === 0, last: indice === _lista34.length - 1 }; var _finDeLista = _lista34.length - 1; %>
+            <option value="<%= valor %>" <% if (pedido.estado == valor) { %>selected<% } %>><%= etiqueta %></option>
+            <% }); } %>
+          </select>
+        </label>
+        <label class="flex min-h-11 items-center gap-2 text-sm text-on-surface sm:pb-2">
+          <input type="checkbox" name="pago_confirmado" <% if (pedido.pago_confirmado) { %>checked<% } %> class="rounded border-outline-variant text-primary focus:ring-primary" />
+          Pagado en tienda
+        </label>
+        <button type="submit" class="min-h-11 rounded-lg bg-primary px-5 py-2 text-sm font-bold text-on-primary transition hover:opacity-90">Guardar cambios</button>
+      </form>
+    </article>
+    <% }); } else { %>
+    <div class="rounded-2xl bg-surface-container-low p-12 text-center text-on-surface-variant">
+      <span class="material-symbols-outlined mb-3 text-5xl text-primary/50">shopping_bag</span>
+      <p>No hay pedidos registrados.</p>
+    </div>
+    <% } %>
+  </section>
+</main>
+<%- include('../partials/admin-mobile-nav', { active: "pedidos" }) %>
+

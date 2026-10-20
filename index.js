@@ -1,13 +1,20 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const path = require('path');
 const expressLayouts = require('express-ejs-layouts');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
+const cron = require('node-cron');
 const { connectDB } = require('./config/db');
 const log = require('./services/log');
+const { enviarRecordatorios } = require('./services/recordatorios');
 const { cargarSesion } = require('./middleware/webauth');
+const mantenimiento = require('./middleware/mantenimiento');
+const { auditarSolicitud } = require('./services/auditoria');
+const RegistroError = require('./models/registroerror.model');
 
 dotenv.config({ quiet: true });
+const backup = require('./servicios/backup');
 
 if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
   throw new Error('MONGO_URI (o DATABASE_URL) y JWT_SECRET son obligatorios para iniciar TecnoCorte');
@@ -30,6 +37,12 @@ app.use(expressLayouts);
 app.set('layout', 'layouts/base');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/api', require('./routes/openapi.routes'));
+
+app.get('/health', (req, res) => {
+  const conectado = mongoose.connection.readyState === 1;
+  return res.status(conectado ? 200 : 503).json({ estado: conectado ? 'ok' : 'degradado', database: conectado ? 'connected' : 'disconnected' });
+});
 
 app.use((req, res, next) => {
   res.set({
@@ -170,6 +183,8 @@ app.use((req, res, next) => {
 });
 
 app.use(cargarSesion);
+app.use(mantenimiento);
+app.use(auditarSolicitud);
 
 app.use(morgan('dev'));
 
@@ -180,17 +195,49 @@ app.use('/api/peluquerias', require('./routes/peluqueria.routes'));
 app.use('/api/pedidos', require('./routes/pedido.routes'));
 app.use('/api/reservas', require('./routes/reserva.routes'));
 app.use('/api/pedidos-producto', require('./routes/pedidoproducto.routes'));
+app.use('/api/catalogo', require('./routes/catalogo.routes'));
+app.use('/api/configuracion', require('./routes/configuracion.routes'));
 
 app.use('/', require('./routes/page.routes'));
 
 app.use((error, req, res, next) => {
   console.error('Error no controlado:', error.message);
+  void RegistroError.create({
+    codigo: `E-${Date.now().toString(36).toUpperCase()}`,
+    codigo_http: 500,
+    tipo: error.name || 'Error',
+    titulo: 'Error interno',
+    mensaje: error.message,
+    detalle: error.stack || '',
+    ruta: req.originalUrl,
+    metodo: req.method,
+    usuario: req.usuario?._id || null,
+    ip: req.ip || '',
+    navegador: req.get('user-agent') || '',
+  }).catch((registroError) => console.error('No se pudo registrar el error:', registroError.message));
   if (res.headersSent) return next(error);
   if (req.path.startsWith('/api/')) return res.status(500).json({ mensaje: 'Error interno del servidor' });
   return res.status(500).send('No se pudo completar la solicitud. Inténtalo de nuevo más tarde.');
 });
 
 const PORT = process.env.PORT || 3000;
+
+cron.schedule('0 0 0 * * *', () => {
+  console.log('Realizando backup nocturno de la base de datos');
+  backup.backupDatabase().catch((error) => {
+    console.error(`Error en el backup nocturno: ${error.message}`);
+  });
+}, {
+  timezone: process.env.BACKUP_TIMEZONE || 'America/Bogota',
+});
+
+cron.schedule('0 */10 * * * *', () => {
+  enviarRecordatorios()
+    .then(({ enviados, revisadas }) => console.log(`Recordatorios enviados: ${enviados}. Citas revisadas: ${revisadas}.`))
+    .catch((error) => console.error(`Error en recordatorios: ${error.message}`));
+}, {
+  timezone: process.env.BACKUP_TIMEZONE || 'America/Bogota',
+});
 
 const startServer = async () => {
   try {

@@ -8,6 +8,9 @@ const rateLimitLogin = require('../middleware/ratelimit');
 const { limitarVerificacion, limitarReenvio, limitarRecuperacion } = rateLimitLogin;
 const { exigirRol, exigirSesion, protegerCSRF } = require('../middleware/webauth');
 const asyncHandler = require('../middleware/asynchandler');
+const adminCatalogoController = require('../controllers/admincatalogo.controller');
+const barberoCatalogoController = require('../controllers/barberoCatalogo.controller');
+const adminOperacionesController = require('../controllers/adminoperaciones.controller');
 
 const router = express.Router();
 router.use(protegerCSRF);
@@ -50,13 +53,14 @@ router.get('/como-funciona', (req, res) => res.render('publicos/como_funciona', 
 router.get('/sobre-nosotros', (req, res) => res.render('publicos/sobre_nosotros', { layout: 'layouts/base', title: 'Sobre nosotros' }));
 
 router.get('/tienda', asyncHandler(pageController.tienda));
-router.get('/servicios', pageController.servicios);
+router.get('/servicios', asyncHandler(pageController.servicios));
 router.get('/peluquerias', asyncHandler(pageController.peluquerias));
 router.get('/reservar-cita', exigirSesion, asyncHandler(pageController.reservarCita));
 router.post('/pre-confirmar', exigirSesion, asyncHandler(pageController.preConfirmar));
 router.post('/confirmar-reserva', exigirSesion, asyncHandler(pageController.confirmarReserva));
 router.get('/perfil', exigirSesion, asyncHandler(pageController.perfil));
 router.post('/perfil', exigirSesion, uploadImage, asyncHandler(pageController.actualizarPerfil));
+router.post('/perfil/preferencias', exigirSesion, asyncHandler(pageController.actualizarPreferencias));
 router.get('/notificaciones', exigirSesion, asyncHandler(pageController.listarNotificaciones));
 router.post('/notificaciones/leidas', exigirSesion, asyncHandler(pageController.marcarNotificacionesLeidas));
 router.get('/cambiar-password', exigirSesion, asyncHandler(pageController.cambiarPassword));
@@ -78,8 +82,11 @@ router.get('/pedido-exitoso/:id', exigirSesion, asyncHandler(pageController.pedi
 router.get('/barbero', exigirRol('Barbero'), asyncHandler(pageController.barberoDashboard));
 router.get('/barbero/perfil', exigirRol('Barbero'), asyncHandler(pageController.barberoPerfil));
 router.post('/barbero/perfil', exigirRol('Barbero'), uploadImage, asyncHandler(pageController.actualizarPerfil));
+router.post('/barbero/preferencias', exigirRol('Barbero'), asyncHandler(pageController.actualizarPreferencias));
 router.post('/barbero/obras', exigirRol('Barbero'), uploadPortfolio, asyncHandler(pageController.subirObras));
 router.post('/barbero/obras/:id/eliminar', exigirRol('Barbero'), asyncHandler(pageController.eliminarObra));
+router.get('/barbero/servicios', exigirRol('Barbero'), asyncHandler(barberoCatalogoController.servicios));
+router.post('/barbero/servicios', exigirRol('Barbero'), asyncHandler(barberoCatalogoController.solicitar));
 router.get('/barbero/notificaciones', exigirRol('Barbero'), asyncHandler(pageController.listarNotificacionesBarbero));
 router.post('/barbero/notificaciones/leidas', exigirRol('Barbero'), asyncHandler(pageController.marcarNotificacionesLeidas));
 router.get('/barbero/nueva-cita', exigirRol('Barbero'), asyncHandler(pageController.barberoNuevaCita));
@@ -124,6 +131,17 @@ router.get('/admin/horarios', exigirRol('Admin'), asyncHandler(pageController.ad
 router.post('/admin/horarios', exigirRol('Admin'), asyncHandler((req, res) => req.body.accion === 'crear_bloqueo' ? pageController.adminCrearBloqueo(req, res) : pageController.adminGuardarHorarios(req, res)));
 router.post('/admin/horarios/bloqueos/:id/eliminar', exigirRol('Admin'), asyncHandler(pageController.adminEliminarBloqueo));
 router.get('/admin/mensajes', exigirRol('Admin'), asyncHandler(pageController.adminMensajes));
+router.get('/admin/servicios', exigirRol('Admin'), asyncHandler(adminCatalogoController.servicios));
+router.post('/admin/servicios/nuevo', exigirRol('Admin'), asyncHandler(adminCatalogoController.crearServicio));
+router.post('/admin/servicios/solicitudes/:id/resolver', exigirRol('Admin'), asyncHandler(adminCatalogoController.resolverSolicitud));
+router.get('/admin/configuracion', exigirRol('Admin'), asyncHandler(adminCatalogoController.configuracion));
+router.post('/admin/configuracion', exigirRol('Admin'), asyncHandler(adminCatalogoController.configuracion));
+router.get('/admin/galeria', exigirRol('Admin'), asyncHandler(adminCatalogoController.galeria));
+router.post('/admin/galeria', exigirRol('Admin'), uploadImage, asyncHandler(adminCatalogoController.agregarImagen));
+router.post('/admin/galeria/:id/eliminar', exigirRol('Admin'), asyncHandler(adminCatalogoController.eliminarImagen));
+router.get('/admin/acciones', exigirRol('Admin'), asyncHandler(adminOperacionesController.acciones));
+router.get('/admin/errores', exigirRol('Admin'), asyncHandler(adminOperacionesController.errores));
+router.post('/admin/errores/:id/revisar', exigirRol('Admin'), asyncHandler(adminOperacionesController.revisarError));
 router.get('/admin/notificaciones', exigirRol('Admin'), (req, res) => res.render('administrador/admin_notificaciones', { layout: 'layouts/dashboard', notificaciones: [] }));
 router.get('/admin/ingresos', exigirRol('Admin'), asyncHandler(pageController.adminIngresos));
 

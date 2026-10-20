@@ -8,6 +8,8 @@ const { enviarCorreoBonito } = require("../config/emailtemplate");
 const { guardarCodigo, verificarCodigo } = require("../config/emailverification");
 const { clearSessionCookie, setSessionCookie } = require("../config/session");
 
+const requiereVerificacionEmail = () => process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+
 const HASH_FALSO = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.VbZV5hQ9Qf6yUQxV0n5h8z0fP1w8W8K";
 
 function emailLimpio(email) {
@@ -51,33 +53,36 @@ async function registro(req, res) {
     const existe = await Usuario.findOne({ email: email });
     if (existe) return res.status(400).json({ mensaje: "El correo ya está registrado" });
 
+    const requiereVerificacion = requiereVerificacionEmail();
     const usuario = await Usuario.create({
       nombre,
       apellido,
       email,
       password,
       telefono,
-      email_verificado: false,
+      email_verificado: !requiereVerificacion,
     });
-    const codigo = await guardarCodigo(usuario);
-
-    await enviarCorreoBonito(transporter, {
-      to: email,
-      subject: "Verifica tu correo de TecnoCorte",
-      title: "Verifica tu correo",
-      preheader: "Tu código de verificación vence en 15 minutos.",
-      greeting: `¡Hola ${nombre}!`,
-      content: `<p>Tu cuenta fue creada. Usa este código para activarla:</p><p><strong style="font-size:28px">${codigo}</strong></p><p>El código vence en 15 minutos.</p>`,
-      text: `Tu código de verificación es ${codigo}. Vence en 15 minutos.`,
-    }).catch(function (error) {
-      console.error("Error al enviar correo:", error.message);
-    });
+    if (requiereVerificacion) {
+      const codigo = await guardarCodigo(usuario);
+      await enviarCorreoBonito(transporter, {
+        to: email,
+        subject: "Verifica tu correo de TecnoCorte",
+        title: "Verifica tu correo",
+        preheader: "Tu código de verificación vence en 15 minutos.",
+        greeting: `¡Hola ${nombre}!`,
+        content: `<p>Tu cuenta fue creada. Usa este código para activarla:</p><p><strong style="font-size:28px">${codigo}</strong></p><p>El código vence en 15 minutos.</p>`,
+        text: `Tu código de verificación es ${codigo}. Vence en 15 minutos.`,
+      }).catch(function (error) {
+        console.error("Error al enviar correo:", error.message);
+      });
+    }
+    if (!requiereVerificacion) setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion));
 
     return res
       .status(201)
       .json({
-        mensaje: "Cuenta creada. Revisa tu correo para verificarla.",
-        verificacion_requerida: true,
+        mensaje: requiereVerificacion ? "Cuenta creada. Revisa tu correo para verificarla." : "Cuenta creada correctamente.",
+        verificacion_requerida: requiereVerificacion,
         usuario: datosPublicos(usuario),
       });
   } catch (error) {
@@ -110,7 +115,7 @@ async function login(req, res) {
     if (usuario.activo === false) {
       return res.status(403).json({ mensaje: "Tu cuenta está suspendida. Contacta al administrador." });
     }
-    if (usuario.email_verificado === false) {
+    if (requiereVerificacionEmail() && usuario.email_verificado === false) {
       return res
         .status(403)
         .json({

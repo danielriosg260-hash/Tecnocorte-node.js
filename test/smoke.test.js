@@ -24,9 +24,28 @@ test('las rutas y middleware principales cargan sin errores', () => {
   assert.doesNotThrow(() => {
     require('../routes/page.routes');
     require('../routes/auth.routes');
+    require('../routes/catalogo.routes');
+    require('../routes/configuracion.routes');
+    require('../routes/openapi.routes');
     require('../middleware/auth');
     require('../middleware/webauth');
   });
+});
+
+test('los modelos de paridad incluyen catálogo, galería, configuración y auditoría', () => {
+  const Servicio = require('../models/servicio.model');
+  const SolicitudServicio = require('../models/solicitudservicio.model');
+  const ImagenPeluqueria = require('../models/imagenpeluqueria.model');
+  const Configuracion = require('../models/configuracion.model');
+  const RegistroAccion = require('../models/registroaccion.model');
+  const RegistroError = require('../models/registroerror.model');
+
+  assert.equal(Servicio.schema.path('barbero').options.required, true);
+  assert.deepEqual(SolicitudServicio.schema.path('estado').options.enum, ['pendiente', 'aprobada', 'rechazada']);
+  assert.equal(ImagenPeluqueria.schema.path('peluqueria').options.required, true);
+  assert.equal(Configuracion.schema.path('modo_mantenimiento').defaultValue, false);
+  assert.equal(RegistroAccion.schema.path('accion').options.required, true);
+  assert.equal(RegistroError.schema.path('codigo_http').options.required, true);
 });
 
 test('el modelo de usuario no expone la contraseña por defecto', () => {

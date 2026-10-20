@@ -15,6 +15,7 @@ const PedidoProducto = require("../models/pedidoproducto.model");
 const Calificacion = require("../models/calificacion.model");
 const Horario = require("../models/horario.model");
 const Bloqueo = require("../models/bloqueo.model");
+const Servicio = require("../models/servicio.model");
 const Mensaje = require("../models/mensaje.model");
 const Ingreso = require("../models/ingreso.model");
 const Notificacion = require("../models/notificacion.model");
@@ -44,6 +45,8 @@ const SERVICIOS = [
     descripcion: "Corte de cabello y arreglo de barba.",
   },
 ];
+const requiereVerificacionEmail = () => process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+let serviciosDisponiblesCache = [...SERVICIOS];
 const ROLES = [
   ["Cliente", "Cliente"],
   ["Barbero", "Barbero"],
@@ -192,16 +195,24 @@ async function registro(req, res) {
           form_post: new URLSearchParams(values).toString(),
         });
     }
+    const requiereVerificacion = requiereVerificacionEmail();
     const usuario = await Usuario.create({
       nombre: values.nombre,
       apellido: values.apellido,
       email,
       password: values.password,
       telefono: values.telefono,
-      email_verificado: false,
+      email_verificado: !requiereVerificacion,
     });
-    const codigo = await guardarCodigo(usuario);
-    await enviarCodigo(usuario, codigo);
+    if (requiereVerificacion) {
+      const codigo = await guardarCodigo(usuario);
+      await enviarCodigo(usuario, codigo);
+    }
+    if (!requiereVerificacion) {
+      setSessionCookie(res, generarToken(usuario._id, usuario.tokenVersion || 0));
+      const destino = nextUrl(values.next || "");
+      return res.redirect(destino !== "/" ? destino : dashboardUrl(usuario));
+    }
     return res.redirect(
       `/verificar-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(values.next || "")}`,
     );
@@ -298,6 +309,9 @@ async function solicitarRecuperacion(req, res) {
 }
 
 async function renderReset(req, res, error = "") {
+  // asyncHandler pasa la función next de Express como tercer argumento al
+  // controlador. No debe terminar renderizada como si fuera un mensaje.
+  if (typeof error !== "string") error = "";
   const tokenHash = crypto.createHash("sha256").update(req.params.token).digest("hex");
   const usuario = await Usuario.findOne({
     resetPasswordToken: tokenHash,
@@ -377,6 +391,20 @@ const cargarProductos = async () =>
     return value;
   });
 
+const cargarServicios = async () => {
+  const dinamicos = await Servicio.find({ activo: true }).sort({ nombre: 1 }).lean();
+  const serviciosDinamicos = dinamicos.map((servicio) => ({
+    nombre: servicio.nombre,
+    descripcion: servicio.descripcion || '',
+    duracion: servicio.duracion || `${servicio.minutos || 30} min`,
+    minutos: servicio.minutos || 30,
+    precio: servicio.precio || 0,
+  }));
+  const nombres = new Set(serviciosDinamicos.map((servicio) => servicio.nombre));
+  serviciosDisponiblesCache = [...SERVICIOS.filter((servicio) => !nombres.has(servicio.nombre)), ...serviciosDinamicos];
+  return serviciosDisponiblesCache;
+};
+
 async function tienda(req, res) {
   return res.render("usuarios/usuario_tienda", {
     layout: false,
@@ -391,11 +419,11 @@ async function peluquerias(req, res) {
     peluquerias: (await Peluqueria.find()).map(plain),
   });
 }
-function servicios(req, res) {
+async function servicios(req, res) {
   return res.render("usuarios/usuario_servicios", {
     layout: false,
     active: "servicios",
-    servicios: SERVICIOS,
+    servicios: await cargarServicios(),
   });
 }
 
@@ -406,6 +434,7 @@ function horariosBase() {
 }
 
 async function reservarCita(req, res) {
+  const serviciosDisponibles = await cargarServicios();
   const peluqueriasData = (await Peluqueria.find()).map(plain);
   const barberos = (await Usuario.find({ rol: "Barbero", activo: { $ne: false } })).map((barbero) => ({
     ...plain(barbero),
@@ -442,7 +471,7 @@ async function reservarCita(req, res) {
     layout: false,
     peluquerias: peluqueriasData,
     peluqueros: barberos,
-    servicios: SERVICIOS,
+    servicios: serviciosDisponibles,
     horarios_json: JSON.stringify(horarios),
     bloqueos_json: JSON.stringify(bloqueos),
     reservas_json: JSON.stringify(reservas),
@@ -456,7 +485,7 @@ async function reservarCita(req, res) {
 }
 
 function findServicio(nombre) {
-  return SERVICIOS.find((servicio) => servicio.nombre === nombre);
+  return serviciosDisponiblesCache.find((servicio) => servicio.nombre === nombre);
 }
 function dosHorasAntes(fecha, hora) {
   const inicio = fechaLocal(fecha, hora);
@@ -780,6 +809,18 @@ async function actualizarPerfil(req, res) {
   return res.redirect("/perfil");
 }
 
+async function actualizarPreferencias(req, res) {
+  const usuario = await Usuario.findById(req.usuario._id);
+  if (!usuario) return res.redirect('/login');
+  usuario.aviso_correo = req.body.aviso_correo === 'on';
+  usuario.aviso_whatsapp = req.body.aviso_whatsapp === 'on';
+  usuario.aviso_sms = req.body.aviso_sms === 'on';
+  const horas = Number(req.body.aviso_anticipacion_horas);
+  usuario.aviso_anticipacion_horas = Number.isInteger(horas) ? Math.min(168, Math.max(1, horas)) : 24;
+  await usuario.save();
+  return res.redirect(req.usuario.rol === 'Barbero' ? '/barbero/perfil' : '/perfil');
+}
+
 async function subirObras(req, res) {
   const usuario = await Usuario.findById(req.usuario._id);
   if (!usuario) return res.redirect("/login");
@@ -824,7 +865,7 @@ async function editarReserva(req, res) {
       peluqueria_id: String(reserva.peluqueria?._id || ""),
       peluquero_id: String(reserva.peluquero?._id || ""),
     },
-    servicios: SERVICIOS,
+    servicios: await cargarServicios(),
     peluquerias: (await Peluqueria.find()).map(plain),
     peluqueros: (await Usuario.find({ rol: "Barbero", activo: { $ne: false } })).map(plain),
   });
@@ -1268,7 +1309,7 @@ async function adminFormularioReserva(req, res) {
       plain,
     ),
     peluquerias: (await Peluqueria.find()).map(plain),
-    servicios: SERVICIOS.map((service) => ({ ...service, duracion: service.duracion })),
+    servicios: (await cargarServicios()).map((service) => ({ ...service, duracion: service.duracion })),
     estado: ESTADOS_RESERVA,
   });
 }
@@ -1583,7 +1624,7 @@ async function barberoNuevaCita(req, res) {
     error: req.query.error || "",
     clientes: (await Usuario.find({ rol: "Cliente", activo: { $ne: false } })).map(plain),
     peluquerias: (await Peluqueria.find()).map(plain),
-    servicios: SERVICIOS,
+    servicios: await cargarServicios(),
     reserva_estados: ESTADOS_RESERVA.map(([value, label]) => ({ value, label })),
   });
 }
@@ -1606,7 +1647,7 @@ async function barberoEditarReserva(req, res) {
       peluqueria_id: String(reserva.peluqueria?._id || ""),
       peluquero_id: String(reserva.peluquero?._id || ""),
     },
-    servicios: SERVICIOS,
+    servicios: await cargarServicios(),
     peluquerias: (await Peluqueria.find()).map(plain),
     peluqueros: [plain(req.usuario)],
   });
@@ -1754,6 +1795,7 @@ module.exports = {
   ayuda,
   actualizarCarrito,
   actualizarPerfil,
+  actualizarPreferencias,
   actualizarReserva,
   barberoDashboard,
   barberoEstadoCita,

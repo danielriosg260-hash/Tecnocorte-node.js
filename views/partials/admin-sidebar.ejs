@@ -46,6 +46,11 @@
       <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
       <span class="font-label uppercase text-xs tracking-widest">Horarios</span>
     </a>
+    <a class="flex items-center space-x-4 px-4 py-3 rounded-lg transition-all <% if (active === 'servicios') { %>bg-primary-container text-on-primary-container font-bold<% } else { %>text-on-surface-variant hover:bg-surface-container-high<% } %>" href="/admin/servicios"><span class="material-symbols-outlined">design_services</span><span class="font-label uppercase text-xs tracking-widest">Servicios</span></a>
+    <a class="flex items-center space-x-4 px-4 py-3 rounded-lg transition-all <% if (active === 'galeria') { %>bg-primary-container text-on-primary-container font-bold<% } else { %>text-on-surface-variant hover:bg-surface-container-high<% } %>" href="/admin/galeria"><span class="material-symbols-outlined">photo_library</span><span class="font-label uppercase text-xs tracking-widest">Galería</span></a>
+    <a class="flex items-center space-x-4 px-4 py-3 rounded-lg transition-all <% if (active === 'configuracion') { %>bg-primary-container text-on-primary-container font-bold<% } else { %>text-on-surface-variant hover:bg-surface-container-high<% } %>" href="/admin/configuracion"><span class="material-symbols-outlined">tune</span><span class="font-label uppercase text-xs tracking-widest">Configuración</span></a>
+    <a class="flex items-center space-x-4 px-4 py-3 rounded-lg transition-all <% if (active === 'acciones') { %>bg-primary-container text-on-primary-container font-bold<% } else { %>text-on-surface-variant hover:bg-surface-container-high<% } %>" href="/admin/acciones"><span class="material-symbols-outlined">history</span><span class="font-label uppercase text-xs tracking-widest">Auditoría</span></a>
+    <a class="flex items-center space-x-4 px-4 py-3 rounded-lg transition-all <% if (active === 'errores') { %>bg-primary-container text-on-primary-container font-bold<% } else { %>text-on-surface-variant hover:bg-surface-container-high<% } %>" href="/admin/errores"><span class="material-symbols-outlined">bug_report</span><span class="font-label uppercase text-xs tracking-widest">Errores</span></a>
   </div>
   <div class="mt-4 shrink-0 space-y-1 border-t border-primary/10 pt-3">
     <a href="/admin/reservas/nueva"

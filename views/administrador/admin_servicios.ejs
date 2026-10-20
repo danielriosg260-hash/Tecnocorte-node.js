@@ -1,0 +1,22 @@
+<%- include('../partials/admin-sidebar', { active: 'servicios' }) %>
+<main class="ml-64 flex-1 p-12 space-y-8">
+  <section>
+    <h1 class="font-headline text-4xl text-primary mb-2">Servicios</h1>
+    <p class="text-on-surface-variant">Administra servicios y solicitudes de los barberos.</p>
+  </section>
+  <form method="post" action="/admin/servicios/nuevo" class="grid gap-3 rounded-xl border border-outline-variant/20 bg-surface-container-low p-6 md:grid-cols-2">
+    <input name="nombre" required placeholder="Nombre del servicio" class="rounded-md p-3">
+    <input name="descripcion" placeholder="Descripción" class="rounded-md p-3">
+    <input name="duracion" value="30 Minutos" placeholder="Duración" class="rounded-md p-3">
+    <input name="minutos" type="number" min="1" value="30" required placeholder="Minutos" class="rounded-md p-3">
+    <input name="precio" type="number" min="0" value="0" required placeholder="Precio" class="rounded-md p-3">
+    <input name="barbero" required placeholder="ID del barbero" class="rounded-md p-3">
+    <button class="rounded-md bg-primary p-3 font-bold text-on-primary md:col-span-2">Crear servicio</button>
+  </form>
+  <section class="space-y-3"><h2 class="text-2xl text-primary">Servicios publicados</h2>
+    <% servicios.forEach((servicio) => { %><article class="rounded-xl border border-outline-variant/20 p-4"><strong><%= servicio.nombre %></strong> · $<%= servicio.precio %> · <%= servicio.barbero?.nombre || 'Sin barbero' %><p class="text-sm text-on-surface-variant"><%= servicio.descripcion %></p></article><% }) %>
+  </section>
+  <section class="space-y-3"><h2 class="text-2xl text-primary">Solicitudes</h2>
+    <% solicitudes.forEach((solicitud) => { %><article class="rounded-xl border border-outline-variant/20 p-4"><strong><%= solicitud.nombre %></strong> · <%= solicitud.estado %> · <%= solicitud.barbero?.nombre || '' %><form method="post" action="/admin/servicios/solicitudes/<%= solicitud._id %>/resolver" class="mt-3 flex gap-2"><input name="nota_admin" placeholder="Nota" class="rounded-md p-2"><button name="estado" value="aprobada" class="rounded bg-primary px-3 py-2">Aprobar</button><button name="estado" value="rechazada" class="rounded bg-error px-3 py-2">Rechazar</button></form></article><% }) %>
+  </section>
+</main>

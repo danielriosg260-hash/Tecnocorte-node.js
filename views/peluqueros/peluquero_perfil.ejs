@@ -85,6 +85,17 @@
       </div>
     </div>
 
+    <div class="bg-surface-container-low rounded-xl p-8 ambient-glow">
+      <h3 class="font-headline text-xl text-primary-container mb-4">Preferencias de notificación</h3>
+      <form method="post" action="/barbero/preferencias" class="space-y-3">
+        <label class="flex items-center gap-3"><input type="checkbox" name="aviso_correo" <%= usuario.aviso_correo !== false ? 'checked' : '' %>> Recordatorios por correo</label>
+        <label class="flex items-center gap-3"><input type="checkbox" name="aviso_whatsapp" <%= usuario.aviso_whatsapp ? 'checked' : '' %>> Avisos por WhatsApp</label>
+        <label class="flex items-center gap-3"><input type="checkbox" name="aviso_sms" <%= usuario.aviso_sms ? 'checked' : '' %>> Avisos por SMS</label>
+        <label class="grid gap-2 text-sm">Anticipación (horas)<input type="number" min="1" max="168" name="aviso_anticipacion_horas" value="<%= usuario.aviso_anticipacion_horas || 24 %>" class="rounded-md p-2"></label>
+        <button class="w-full rounded-md bg-primary py-3 font-bold text-on-primary">Guardar preferencias</button>
+      </form>
+    </div>
+
     <!-- Reseñas de clientes -->
     <% if (calificaciones && calificaciones.length) { %>
     <section>

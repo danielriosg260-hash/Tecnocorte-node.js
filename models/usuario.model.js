@@ -24,7 +24,11 @@ const usuarioSchema = new mongoose.Schema({
   tokenVersion: { type: Number, default: 0, min: 0, select: false },
   email_verificado: { type: Boolean, default: true },
   email_verificacion_token: { type: String, select: false },
-  email_verificacion_expira: { type: Date, select: false }
+  email_verificacion_expira: { type: Date, select: false },
+  aviso_correo: { type: Boolean, default: true },
+  aviso_whatsapp: { type: Boolean, default: false },
+  aviso_sms: { type: Boolean, default: false },
+  aviso_anticipacion_horas: { type: Number, min: 1, max: 168, default: 24 },
 }, { timestamps: true });
 
 usuarioSchema.virtual('fecha_creacion').get(function () { return this.createdAt; });

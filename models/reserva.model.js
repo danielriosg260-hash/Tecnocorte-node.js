@@ -10,7 +10,8 @@ const reservaSchema = new mongoose.Schema({
   minutos: { type: Number, default: 30, min: 15, max: 480 },
   estado: { type: String, enum: ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar'], default: 'Pendiente' },
   requiere_reprogramacion: { type: Boolean, default: false },
-  motivo_reprogramacion: { type: String, default: '' }
+  motivo_reprogramacion: { type: String, default: '' },
+  recordatorio_correo_enviado: { type: Date, default: null },
 }, { timestamps: true });
 
 // Impide dos reservas activas exactamente en el mismo puesto y horario.

@@ -7,6 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db": "mongod --dbpath ~/mongodb-data --port 27017 --bind_ip 127.0.0.1",
+    "backup": "node scripts/backup.js",
     "test": "node --test"
   },
   "keywords": [],

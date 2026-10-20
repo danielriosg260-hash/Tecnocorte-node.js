@@ -26,6 +26,13 @@ function generarToken(id, tokenVersion) {
   });
 }
 
+/** Mantiene el inicio público del cliente y los paneles de staff. */
+function destinoTrasAcceso(usuario, siguiente) {
+  const destino = urlSegura(siguiente || '');
+  if (destino !== '/') return destino;
+  return usuario && usuario.rol === 'Cliente' ? '/' : panelDe(usuario);
+}
+
 // ---------------------------------------------------------------------------
 // Login
 // ---------------------------------------------------------------------------
@@ -70,9 +77,8 @@ async function iniciarSesion(req, res) {
     guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
     await Ingreso.create({ usuario: usuario._id, rol: usuario.rol, ip: req.ip });
 
-    // "next" solo se sigue si es un destino seguro; si no, manda al panel del rol.
-    const destino = req.body.next || req.query.next;
-    return res.redirect(destino ? urlSegura(destino) : panelDe(usuario));
+    // "next" solo se sigue si es un destino seguro; si no, se respeta el inicio del rol.
+    return res.redirect(destinoTrasAcceso(usuario, req.body.next || req.query.next));
   } catch (error) {
     console.error('Error en el login:', error.message);
     return mostrarLogin(req, res, 'No se pudo iniciar sesión.');
@@ -148,8 +154,7 @@ async function registrar(req, res) {
 
     // El registro no depende de SMTP: la sesión se abre inmediatamente.
     guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
-    const destino = urlSegura(datos.next || '');
-    return res.redirect(destino !== '/' ? destino : panelDe(usuario));
+    return res.redirect(destinoTrasAcceso(usuario, datos.next));
   } catch (error) {
     return volverAlFormulario(mensajeError(error));
   }
@@ -202,7 +207,7 @@ async function verificarEmail(req, res) {
 
   // Cuenta confirmada: se abre sesión y se sigue en "next" o en el panel del rol.
   guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
-  return res.redirect(next !== '/' ? next : panelDe(usuario));
+  return res.redirect(destinoTrasAcceso(usuario, next));
 }
 
 /** Manda de nuevo el código; responde igual aunque el correo no exista. */

@@ -31,11 +31,11 @@ async function galeriasPorPeluqueria(peluquerias) {
 // ---- Inicio y catálogo ----
 
 /**
- * Página principal. El admin y el barbero van directo a su panel, salvo que
- * abran el inicio con ?vista=publica para revisarlo.
+ * Página principal. Admin y barbero conservan su panel como inicio; el cliente
+ * puede navegar por la portada y tiene su perfil separado en /perfil.
  */
 async function inicio(req, res) {
-  if (req.usuario && req.query.vista !== 'publica') {
+  if (req.usuario && req.usuario.rol !== 'Cliente' && req.query.vista !== 'publica') {
     return res.redirect(panelDe(req.usuario));
   }
 

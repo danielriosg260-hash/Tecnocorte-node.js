@@ -103,7 +103,7 @@ async function mostrarRegistro(req, res) {
   });
 }
 
-/** Crea la cuenta todavía sin verificar y manda el código de confirmación. */
+/** Crea la cuenta activa y abre la sesión sin depender del correo. */
 async function registrar(req, res) {
   const datos = req.body;
   const email = normalizarEmail(datos.email);
@@ -143,16 +143,13 @@ async function registrar(req, res) {
       email,
       password: datos.password,
       telefono: datos.telefono,
-      email_verificado: false
+      email_verificado: true
     });
 
-    // La cuenta nace sin verificar: se guarda el código y se envía por correo.
-    const codigo = await guardarCodigo(usuario);
-    await enviarCodigoVerificacion(usuario, codigo);
-
-    return res.redirect(
-      `/verificar-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(datos.next || '')}`
-    );
+    // El registro no depende de SMTP: la sesión se abre inmediatamente.
+    guardarSesion(res, generarToken(usuario._id, usuario.tokenVersion));
+    const destino = urlSegura(datos.next || '');
+    return res.redirect(destino !== '/' ? destino : panelDe(usuario));
   } catch (error) {
     return volverAlFormulario(mensajeError(error));
   }

@@ -77,9 +77,15 @@ limitarLogin.limitarRecuperacion = crearLimitador(
   3,
   'Demasiadas solicitudes. Inténtalo más tarde.'
 );
+limitarLogin.limitarContacto = crearLimitador(
+  'contacto',
+  3,
+  'Has enviado varios mensajes. Inténtalo de nuevo más tarde.'
+);
 
 // Se exporta el limitador de login y, por conveniencia, también los auxiliares.
 module.exports = limitarLogin;
 module.exports.limitarRecuperacion = limitarLogin.limitarRecuperacion;
 module.exports.limitarReenvio = limitarLogin.limitarReenvio;
 module.exports.limitarVerificacion = limitarLogin.limitarVerificacion;
+module.exports.limitarContacto = limitarLogin.limitarContacto;

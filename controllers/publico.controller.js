@@ -127,6 +127,11 @@ async function mostrarAyuda(req, res, error = '', exito = '', valores = {}) {
 
 /** Guarda el mensaje de contacto y avisa al administrador. */
 async function ayuda(req, res) {
+  // Campo trampa para bots: los usuarios no lo ven ni deben completarlo.
+  if (String(req.body.website || '').trim()) {
+    return res.redirect('/ayuda');
+  }
+
   const valores = {
     nombre: String(req.body.nombre || '').trim(),
     email: normalizarEmail(req.body.email),

@@ -1072,7 +1072,16 @@ async function eliminarBloqueo(req, res) {
 /** Bandeja de mensajes de contacto. */
 async function mensajes(req, res) {
   // Se leen primero y luego se marcan todos como leídos (punto de entrada de la bandeja).
-  const lista = await Mensaje.find().sort({ createdAt: -1 });
+  // ZAP dejó registros de prueba con este correo; no deben mezclarse con consultas reales.
+  const lista = await Mensaje.find({
+    $nor: [
+      { email: /^zaproxy@example\.com$/i },
+      { nombre: /^ZAP$/i },
+      { nombre: /^nombre=ZAP&email=zaproxy%40example\.com&asunto=ZAP&mensaje=/i },
+      // ZAP también probó cada payload en el campo nombre dejando el correo vacío.
+      { nombre: /(?:zaproxy|xsl|system-property|union\s+all|cat\s+\/etc|sleep|start-sleep|<[^>]*>|web-inf|system\.ini|passwd|owasp\.org|google\.com|^zj)/i }
+    ]
+  }).sort({ createdAt: -1 });
   await Mensaje.updateMany({ leido: false }, { leido: true });
 
   return res.render('administrador/admin_mensajes', {

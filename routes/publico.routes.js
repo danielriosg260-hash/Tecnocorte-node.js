@@ -10,7 +10,7 @@ const tienda = require('../controllers/tienda.controller');
 const { exigirSesion } = require('../middleware/sesion');
 const { protegerCSRF } = require('../middleware/sesion');
 const limitarLogin = require('../middleware/ratelimit');
-const { limitarVerificacion, limitarReenvio, limitarRecuperacion } = limitarLogin;
+const { limitarVerificacion, limitarReenvio, limitarRecuperacion, limitarContacto } = limitarLogin;
 const asyncHandler = require('../middleware/errores').asyncHandler;
 
 // Protección CSRF para todos los formularios de este archivo.
@@ -29,7 +29,7 @@ router.get('/tienda/:id', asyncHandler(tienda.detalleProducto));
 
 // Contacto
 router.get('/ayuda', asyncHandler(publico.mostrarAyuda));
-router.post('/ayuda', asyncHandler(publico.ayuda));
+router.post('/ayuda', limitarContacto, asyncHandler(publico.ayuda));
 
 // Sesión
 router.get('/login', (req, res) => auth.mostrarLogin(req, res));

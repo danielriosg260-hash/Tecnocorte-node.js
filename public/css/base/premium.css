@@ -386,6 +386,42 @@ html:not(.dark) .tc-form {
   margin-top: 0.4rem;
 }
 
+/* Base común para todos los formularios. Se excluyen controles de acción y
+   selección para no convertir checkboxes o botones en campos de texto. */
+form :is(
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not(.tc-field__input),
+    select:not([data-tc-native]):not(.tc-field__input),
+    textarea:not([data-tc-native]):not(.tc-field__input)
+  ) {
+  border-radius: 0.85rem;
+  border: 1px solid var(--c-outline-variant, #4d4635);
+  background-color: var(--c-surface-container-high, #2a2a2a);
+  color: var(--c-on-surface, #e2e2e2);
+  color-scheme: dark;
+}
+html:not(.dark) form :is(
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not(.tc-field__input),
+    select:not([data-tc-native]):not(.tc-field__input),
+    textarea:not([data-tc-native]):not(.tc-field__input)
+  ) {
+  background-color: var(--c-surface-container-high, #d5cebd);
+  color: var(--c-on-surface, #1b1915);
+  color-scheme: light;
+}
+form input:-webkit-autofill,
+form input:-webkit-autofill:hover,
+form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--c-on-surface, #e2e2e2);
+  -webkit-box-shadow: 0 0 0 1000px var(--c-surface-container-high, #2a2a2a) inset;
+  border-radius: 0.85rem !important;
+}
+html:not(.dark) form input:-webkit-autofill,
+html:not(.dark) form input:-webkit-autofill:hover,
+html:not(.dark) form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--c-on-surface, #1b1915);
+  -webkit-box-shadow: 0 0 0 1000px var(--c-surface-container-high, #d5cebd) inset;
+}
+
 /* Campo con etiqueta flotante. Markup: input, luego label. */
 .tc-field {
   position: relative;
@@ -415,6 +451,33 @@ html:not(.dark) .tc-form {
   box-shadow:
     0 0 0 3px rgba(214, 173, 66, 0.18),
     0 14px 34px -20px rgba(214, 173, 66, 0.8);
+}
+
+/* El navegador aplica estilos propios a los correos y a los campos
+   autocompletados; deben conservar la misma tarjeta que el resto del formulario. */
+.tc-field__input[type="email"] {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0.85rem !important;
+  border: 1px solid var(--c-outline-variant, #4d4635) !important;
+  background: color-mix(in srgb, var(--c-surface-container-high, #2a2a2a) 82%, transparent) !important;
+}
+.tc-field__input[type="email"]:focus {
+  border-color: var(--c-primary) !important;
+  background: color-mix(in srgb, var(--c-primary) 7%, var(--c-surface-container-high, #2a2a2a)) !important;
+}
+.tc-field__input:-webkit-autofill,
+.tc-field__input:-webkit-autofill:hover,
+.tc-field__input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--c-on-surface);
+  -webkit-box-shadow: 0 0 0 1000px var(--c-surface-container-high, #2a2a2a) inset;
+  border: 1px solid var(--c-outline-variant, #4d4635) !important;
+  border-radius: 0.85rem !important;
+}
+html:not(.dark) .tc-field__input:-webkit-autofill,
+html:not(.dark) .tc-field__input:-webkit-autofill:hover,
+html:not(.dark) .tc-field__input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--c-surface-container-high, #d5cebd) inset;
 }
 
 /* Los controles nativos de fecha/hora no deben volver al fondo blanco del

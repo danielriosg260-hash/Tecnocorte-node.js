@@ -1,3 +1,8 @@
+/**
+ * Manejo de errores de la aplicación.
+ * Aquí viven el envoltorio para controladores async, el 404 y el capturador
+ * final que muestra una página amigable con un código de reporte.
+ */
 const crypto = require('crypto');
 const log = require('../servicios/log');
 
@@ -27,6 +32,7 @@ function detalleParaAdmin(req, codigo, error) {
 
 /** Responde 404 cuando ninguna ruta coincide. */
 function noEncontrado(req, res) {
+  // A la API se le responde en JSON; al navegador, con la vista de error.
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ mensaje: 'Ruta no encontrada' });
   }
@@ -46,12 +52,15 @@ function manejarErrores(error, req, res, next) {
   console.error('Error no controlado:', error.message);
   log.escribir(`ERROR ${req.method} ${req.originalUrl}: ${error.message}`);
 
+  // Si la respuesta ya empezó, el error se pasa a Express para que cierre la conexión.
   if (res.headersSent) return next(error);
 
+  // Las rutas de la API reciben JSON sin detalles internos.
   if (req.path.startsWith('/api/')) {
     return res.status(500).json({ mensaje: 'Error interno del servidor' });
   }
 
+  // En el sitio se genera un código de reporte y se registra el error.
   const codigo = codigoDeReporte();
   void log.registrarError(req, codigo, error);
 
@@ -65,4 +74,5 @@ function manejarErrores(error, req, res, next) {
   });
 }
 
+// Exporta el envoltorio async, el capturador final y el 404.
 module.exports = { asyncHandler, manejarErrores, noEncontrado };

@@ -1,3 +1,8 @@
+/**
+ * Rutas del panel de administración de TecnoCorte.
+ * CRUD de usuarios, peluqueros, reservas, peluquerías, productos, pedidos,
+ * horarios, galería y auditoría: todo reservado al rol Admin.
+ */
 const express = require('express');
 const router = express.Router();
 const admin = require('../controllers/admin.controller');
@@ -7,6 +12,7 @@ const { exigirRol, protegerCSRF } = require('../middleware/sesion');
 const { subirFoto, subirImagen } = require('../middleware/subida');
 const asyncHandler = require('../middleware/errores').asyncHandler;
 
+// Middlewares de todo el panel: primero el control CSRF y después solo Admin.
 router.use(protegerCSRF);
 router.use(exigirRol('Admin'));
 

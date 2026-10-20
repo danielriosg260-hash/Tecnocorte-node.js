@@ -1,3 +1,7 @@
+/**
+ * API de reservas (citas): validación de datos y disponibilidad, más el
+ * CRUD aplicando los permisos de cada rol (Admin, Barbero y Cliente).
+ */
 const mongoose = require('mongoose');
 const Reserva = require('../models/reserva.model');
 const Usuario = require('../models/usuario.model');
@@ -7,6 +11,7 @@ const { notificarReserva } = require('../servicios/notificaciones');
 const { reservasSolapadas } = require('../servicios/disponibilidad');
 const { esFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 
+// Estados de una cita viva. Queda declarada aquí, pero el archivo no la usa.
 const ESTADOS_ACTIVOS = ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'];
 
 /** Revisa que una cita tenga datos correctos y no se cruce con otra. */
@@ -22,11 +27,14 @@ async function validarReserva(datos) {
   }
 
   if (!String(servicio || '').trim() || String(servicio).length > 120) return 'El servicio no es válido.';
+  // Regla básica: no se reservan citas en el pasado.
   if (fechaLocal(fecha, hora) <= new Date()) return 'La fecha y hora deben estar en el futuro.';
   if (estado !== undefined && !ESTADOS_RESERVA.some(([valor]) => valor === estado)) {
     return 'El estado de la reserva no es válido.';
   }
 
+  // El cliente, la barbería y el barbero deben existir y el barbero
+  // tiene que pertenecer a la barbería elegida.
   const [existeCliente, existePeluqueria, existeBarbero] = await Promise.all([
     Usuario.exists({ _id: cliente, rol: 'Cliente', activo: { $ne: false } }),
     Peluqueria.exists({ _id: peluqueria }),
@@ -37,6 +45,7 @@ async function validarReserva(datos) {
   if (!existePeluqueria) return 'La barbería no existe.';
   if (!existeBarbero) return 'El barbero no está disponible para esta barbería.';
 
+  // Nada de solapes: dos citas del mismo barbero no pueden cruzarse en el tiempo.
   const ocupado = await reservasSolapadas(Reserva, {
     peluquero,
     fecha,
@@ -88,6 +97,8 @@ async function findOne(req, res) {
 /** Crea una reserva. */
 async function insertOne(req, res) {
   try {
+    // El cliente y el barbero siempre reservan para sí mismos;
+    // solo el Admin puede elegir a quién y con qué estado se crea.
     const cliente = req.usuario.rol === 'Cliente' ? req.usuario._id : req.body.cliente;
     const peluquero = req.usuario.rol === 'Barbero' ? req.usuario._id : req.body.peluquero;
     const minutos = Number(req.body.minutos) || 30;
@@ -110,6 +121,7 @@ async function insertOne(req, res) {
       cliente,
       peluqueria: req.body.peluqueria,
       peluquero,
+      // "YYYY-MM-DDT00:00:00" fija la cita al día escrito, sin hora mezclada.
       fecha: new Date(`${req.body.fecha}T00:00:00`),
       hora: req.body.hora,
       servicio: req.body.servicio,
@@ -117,6 +129,7 @@ async function insertOne(req, res) {
       estado
     });
 
+    // Aviso a los implicados en segundo plano, sin frenar la respuesta.
     void notificarReserva(reserva._id, 'reservada');
     res.status(201).json(reserva);
   } catch (error) {
@@ -131,6 +144,8 @@ async function findOneAndUpdate(req, res) {
     if (!actual) return res.status(404).json({ mensaje: 'Reserva no encontrada.' });
 
     const esAdmin = req.usuario.rol === 'Admin';
+    // El Admin puede mover la cita a otro barbero o cambiarle el estado;
+    // los demás solo tocan lugar, fecha, hora, servicio y duración.
     const permitidos = esAdmin
       ? ['peluqueria', 'peluquero', 'fecha', 'hora', 'servicio', 'minutos', 'estado']
       : ['peluqueria', 'fecha', 'hora', 'servicio', 'minutos'];
@@ -151,6 +166,7 @@ async function findOneAndUpdate(req, res) {
       estado: esAdmin ? cambios.estado || actual.estado : actual.estado
     };
 
+    // Al revalidar se ignora la propia cita, para que no choque consigo misma.
     const error = await validarReserva({ ...datos, excluir: actual._id });
     if (error) return res.status(400).json({ mensaje: error });
 
@@ -171,6 +187,7 @@ async function findOneAndDelete(req, res) {
     const reserva = await Reserva.findOne({ _id: req.params.id, ...filtroPropietario(req.usuario) });
     if (!reserva) return res.status(404).json({ mensaje: 'Reserva no encontrada.' });
 
+    // Solo el Admin borra citas ya cerradas (completadas o canceladas).
     if (req.usuario.rol !== 'Admin' && ['Completada', 'Cancelada'].includes(reserva.estado)) {
       return res.status(409).json({ mensaje: 'Esta reserva ya no se puede eliminar.' });
     }

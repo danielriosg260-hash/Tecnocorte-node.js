@@ -1,3 +1,7 @@
+/**
+ * Rutas públicas del sitio: portada, páginas informativas, tienda,
+ * contacto y todo el proceso de sesión (login, registro y recuperación).
+ */
 const express = require('express');
 const router = express.Router();
 const publico = require('../controllers/publico.controller');
@@ -9,6 +13,7 @@ const limitarLogin = require('../middleware/ratelimit');
 const { limitarVerificacion, limitarReenvio, limitarRecuperacion } = limitarLogin;
 const asyncHandler = require('../middleware/errores').asyncHandler;
 
+// Protección CSRF para todos los formularios de este archivo.
 router.use(protegerCSRF);
 
 // Páginas públicas

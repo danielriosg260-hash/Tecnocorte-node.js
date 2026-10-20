@@ -1,3 +1,7 @@
+/**
+ * API de barberías (peluquerías): listado público y CRUD de administración,
+ * con la particularidad de no poder borrar un local que ya tenga citas.
+ */
 const Peluqueria = require('../models/peluqueria.model');
 const Reserva = require('../models/reserva.model');
 
@@ -45,6 +49,7 @@ async function insertOne(req, res) {
 /** Actualiza una barbería. */
 async function findOneAndUpdate(req, res) {
   try {
+    // Solo se copian los campos enviados; los que faltan quedan como estaban.
     const campos = ['nombre', 'ubicacion', 'telefono', 'descripcion', 'imagen', 'dueno'];
     const cambios = {};
 
@@ -64,6 +69,7 @@ async function findOneAndUpdate(req, res) {
 /** Elimina una barbería sin citas. */
 async function findOneAndDelete(req, res) {
   try {
+    // Regla de integridad: la barbería se elimina solo si no tiene citas.
     if (await Reserva.exists({ peluqueria: req.params.id })) {
       return res.status(409).json({ mensaje: 'No se puede eliminar una barbería con citas.' });
     }

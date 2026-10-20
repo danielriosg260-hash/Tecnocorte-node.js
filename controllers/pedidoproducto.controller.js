@@ -1,3 +1,7 @@
+/**
+ * Líneas de un pedido (producto + cantidad + precio): CRUD con control de
+ * acceso al pedido padre y recálculo del total al agregar productos.
+ */
 const PedidoProducto = require('../models/pedidoproducto.model');
 const Pedido = require('../models/pedido.model');
 
@@ -12,6 +16,7 @@ async function find(req, res) {
   try {
     const filtro = req.query.pedido ? { pedido: req.query.pedido } : {};
 
+    // Filtrar por un pedido ajeno se responde 403 en vez de devolver datos.
     if (req.query.pedido && !(await puedeVer(req, req.query.pedido))) {
       return res.status(403).json({ mensaje: 'No puedes ver este pedido.' });
     }
@@ -52,6 +57,7 @@ async function insertOne(req, res) {
       precio
     });
 
+    // Con la línea nueva se vuelve a sumar el total del pedido completo.
     const lineas = await PedidoProducto.find({ pedido: req.body.pedido });
     await Pedido.findByIdAndUpdate(req.body.pedido, {
       total: lineas.reduce((total, item) => total + item.precio * item.cantidad, 0)

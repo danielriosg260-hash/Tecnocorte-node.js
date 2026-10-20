@@ -1,3 +1,7 @@
+/**
+ * API de pedidos de la tienda: cálculo del total, consulta por rol,
+ * alta, cambio de estado/pago y borrado junto con sus líneas.
+ */
 const Pedido = require('../models/pedido.model');
 const PedidoProducto = require('../models/pedidoproducto.model');
 const Producto = require('../models/producto.model');
@@ -15,6 +19,7 @@ async function calcularTotal(productos) {
 
     if (!producto || !Number.isInteger(cantidad) || cantidad < 1) return null;
 
+    // El precio siempre sale del catálogo, nunca del que envía el cliente.
     total += producto.precio * cantidad;
     lineas.push({ producto: producto._id, cantidad, precio: producto.precio });
   }
@@ -25,6 +30,7 @@ async function calcularTotal(productos) {
 /** Lista los pedidos (el cliente solo ve los suyos). */
 async function find(req, res) {
   try {
+    // Admin y barberos ven toda la colección; el cliente, solo la suya.
     const filtro = ['Admin', 'Barbero'].includes(req.usuario.rol) ? {} : { cliente: req.usuario._id };
     const pedidos = await Pedido.find(filtro).populate('cliente', 'nombre apellido email').sort({ fecha: -1 });
 
@@ -52,6 +58,8 @@ async function findOne(req, res) {
 /** Crea un pedido con sus productos. */
 async function insertOne(req, res) {
   try {
+    // Un cliente siempre compra para sí mismo; el Admin o el barbero
+    // pueden anotar el pedido a nombre de un cliente concreto.
     const cliente = req.usuario.rol === 'Cliente' ? req.usuario._id : req.body.cliente;
     const calculo = await calcularTotal(req.body.productos);
 
@@ -76,6 +84,8 @@ async function findOneAndUpdate(req, res) {
     if (req.body.estado !== undefined) cambios.estado = req.body.estado;
     if (req.body.pago_confirmado !== undefined) cambios.pago_confirmado = Boolean(req.body.pago_confirmado);
 
+    // El rol Admin lo exige la ruta; los valores válidos (Pendiente, Listo,
+    // Entregado, Cancelado) los revisa el enum del modelo.
     const pedido = await Pedido.findByIdAndUpdate(req.params.id, cambios, { new: true, runValidators: true });
     if (!pedido) return res.status(404).json({ mensaje: 'Pedido no encontrado.' });
 
@@ -91,6 +101,7 @@ async function findOneAndDelete(req, res) {
     const pedido = await Pedido.findByIdAndDelete(req.params.id);
     if (!pedido) return res.status(404).json({ mensaje: 'Pedido no encontrado.' });
 
+    // Primero el pedido y luego sus líneas, para no dejar productos huérfanos.
     await PedidoProducto.deleteMany({ pedido: pedido._id });
     res.status(200).json({ mensaje: 'Pedido eliminado correctamente.' });
   } catch (error) {

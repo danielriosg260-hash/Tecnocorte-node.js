@@ -1,3 +1,8 @@
+/**
+ * Panel de administración: usuarios, barberos, citas, barberías, productos,
+ * pedidos, reportes exportables, horarios, galería, configuración del sitio,
+ * solicitudes de servicios y auditoría (acciones y errores).
+ */
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -35,6 +40,9 @@ const { peluqueriaDelBarbero } = require('./barbero.controller');
 const { claveFecha, fechaLocal } = require('../utils/fechas');
 const { aLista, aObjeto, mensajeError, normalizarEmail } = require('../utils/objetos');
 
+// ---- Constantes locales ----
+
+/** Etiquetas [valor, texto] de estado de pedido para las tablas del panel. */
 const ESTADOS_PEDIDO = [
   ['Pendiente', 'Pendiente'],
   ['Listo', 'Listo para recoger'],
@@ -42,11 +50,14 @@ const ESTADOS_PEDIDO = [
   ['Cancelado', 'Cancelado']
 ];
 
+/** Etiquetas [valor, texto] del registro de errores del sitio. */
 const ESTADOS_ERROR = [
   ['pendiente', 'Pendiente'],
   ['revisado', 'Revisado'],
   ['ignorado', 'Ignorado']
 ];
+
+// ---- Utilidades internas ----
 
 /** Borra del disco la foto que se reemplaza o se quita. */
 function borrarArchivo(url) {
@@ -69,12 +80,15 @@ function motivoEliminacion(req) {
 async function datosFormularioCita() {
   return {
     clientes: aLista(await Usuario.find({ rol: 'Cliente' }).sort({ nombre: 1 })),
+    // Solo los barberos activos (o sin marcar como inactivos) aparecen en el selector.
     peluqueros: aLista(await Usuario.find({ rol: 'Barbero', activo: { $ne: false } }).sort({ nombre: 1 })),
     peluquerias: aLista(await Peluqueria.find().sort({ nombre: 1 })),
     servicios: await catalogoServicios(),
     reserva_estados: ESTADOS_RESERVA
   };
 }
+
+// ---- Reportes exportables ----
 
 /** Genera un reporte HTML que Excel abre como hoja de cálculo. */
 function respuestaExcel(res, titulo, subtitulo, encabezados, filas, nombreArchivo) {
@@ -103,8 +117,11 @@ function respuestaExcel(res, titulo, subtitulo, encabezados, filas, nombreArchiv
 
   res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+  // El BOM inicial (\ufeff) hace que Excel reconozca UTF-8 y no arruine tildes.
   return res.send('\ufeff' + html);
 }
+
+// ---- Panel principal ----
 
 /** Panel principal del administrador. */
 async function dashboard(req, res) {
@@ -117,16 +134,21 @@ async function dashboard(req, res) {
     Pedido.countDocuments({ estado: 'Pendiente' })
   ]);
 
+  // Mapa nombre → precio del catálogo, para valorar cada cita completada.
   const precios = new Map(catalogo.map((servicio) => [servicio.nombre, servicio.precio]));
+  // Conteo de reservas por estado (alimenta las barras del dashboard).
   const estados = {};
   ESTADOS_RESERVA.forEach(([estado]) => {
     estados[estado] = reservas.filter((reserva) => reserva.estado === estado).length;
   });
 
+  // Ventas totales = servicios completados (al precio del catálogo) +
+  // sumatoria de pedidos pagados que no estén cancelados.
   const ventasServicios = reservas
     .filter((reserva) => reserva.estado === 'Completada')
     .reduce((total, reserva) => total + (precios.get(reserva.servicio) || 0), 0);
   const ventasProductos = pedidos.reduce((total, pedido) => total + (Number(pedido.total) || 0), 0);
+  // Las 6 citas más recientes: se comparan fecha y hora como texto "AAAA-MM-DD HH:mm".
   const ultimas = [...reservas]
     .sort((a, b) => `${claveFecha(b.fecha)} ${b.hora}`.localeCompare(`${claveFecha(a.fecha)} ${a.hora}`))
     .slice(0, 6);
@@ -146,6 +168,8 @@ async function dashboard(req, res) {
   });
 }
 
+// ---- Exportación a Excel ----
+
 /** Descarga el reporte de reservas. */
 async function exportarReservas(req, res) {
   const reservas = await Reserva.find()
@@ -154,6 +178,7 @@ async function exportarReservas(req, res) {
     .populate('peluqueria', 'nombre')
     .sort({ fecha: 1, hora: 1 });
 
+  // Las fechas se muestran en formato dd/mm/aaaa (claveFecha invertida con guiones).
   const filas = reservas.map((reserva) => [
     reserva._id,
     claveFecha(reserva.fecha).split('-').reverse().join('/'),
@@ -199,8 +224,11 @@ async function exportarPedidos(req, res) {
   );
 }
 
+// ---- Gestión de usuarios ----
+
 /** Listado de usuarios con el resumen por rol. */
 async function usuarios(req, res) {
+  // Una sola ronda de consultas: la lista completa más los contadores por rol.
   const [lista, totalAdmin, totalClientes, totalPeluqueros] = await Promise.all([
     Usuario.find().sort({ createdAt: -1 }),
     Usuario.countDocuments({ rol: 'Admin' }),
@@ -241,6 +269,7 @@ async function formularioUsuario(req, res, error = '') {
 async function guardarUsuario(req, res) {
   const editando = mongoose.isValidObjectId(req.params.id);
 
+  // La validación completa solo aplica al crear; al editar se conservan los valores actuales.
   if (!editando) {
     const campos = ['nombre', 'apellido', 'email', 'password', 'rol'];
 
@@ -248,6 +277,7 @@ async function guardarUsuario(req, res) {
       return formularioUsuario(req, res, 'Todos los campos son obligatorios.');
     }
 
+    // Un barbero siempre debe pertenecer a una sede concreta.
     if (req.body.rol === 'Barbero' && !mongoose.isValidObjectId(req.body.peluqueria)) {
       return formularioUsuario(req, res, 'Para crear un barbero debes seleccionar la barbería a la que pertenece.');
     }
@@ -265,14 +295,17 @@ async function guardarUsuario(req, res) {
     usuario.email = normalizarEmail(req.body.email || usuario.email);
     usuario.telefono = String(req.body.telefono || '').trim();
 
+    // El rol de un admin existente no se puede cambiar desde este formulario.
     if (!editando || usuario.rol !== 'Admin') {
       usuario.rol = ROLES.some(([rol]) => rol === req.body.rol) ? req.body.rol : usuario.rol;
     }
 
+    // Solo los barberos conservan sede asignada; en el resto se limpia el campo.
     usuario.peluqueria_id = usuario.rol === 'Barbero' && mongoose.isValidObjectId(req.body.peluqueria)
       ? req.body.peluqueria
       : undefined;
 
+    // La contraseña solo se actualiza si viene una nueva en el formulario.
     if (req.body.password) usuario.password = req.body.password;
     if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
     if (req.body.quitar_foto && usuario.foto && usuario.foto.url) {
@@ -295,6 +328,7 @@ async function eliminarUsuario(req, res) {
     const usuario = await Usuario.findById(req.params.id);
 
     if (usuario) {
+      // Con historial de citas o pedidos el usuario no se borra: se redirige con error.
       const tieneHistorial = await Promise.all([
         Reserva.exists({ $or: [{ cliente: usuario._id }, { peluquero: usuario._id }] }),
         Pedido.exists({ cliente: usuario._id })
@@ -327,6 +361,8 @@ async function suspenderUsuario(req, res) {
     usuario.activo = !usuario.activo;
     await usuario.save();
 
+    // Al suspender un barbero, sus citas futuras quedan marcadas para reprogramar
+    // y cada cliente afectado recibe una notificación.
     if (usuario.rol === 'Barbero' && !usuario.activo) {
       const futuras = await Reserva.find({
         peluquero: usuario._id,
@@ -363,6 +399,8 @@ async function quitarFotoUsuario(req, res) {
 
   return res.redirect(destino);
 }
+
+// ---- Gestión de barberos ----
 
 /** Listado de barberos. */
 async function peluqueros(req, res) {
@@ -407,6 +445,7 @@ async function guardarPeluquero(req, res) {
     barbero.telefono = String(req.body.telefono || '').trim();
     barbero.peluqueria_id = mongoose.isValidObjectId(req.body.peluqueria) ? req.body.peluqueria : undefined;
 
+    // Al crear un barbero la sede es obligatoria; al editar puede quedar vacía.
     if (!editando && !mongoose.isValidObjectId(req.body.peluqueria)) {
       return formularioPeluquero(req, res, 'Selecciona la barbería a la que pertenece el barbero.');
     }
@@ -459,11 +498,15 @@ async function suspenderCitasDelBarbero(barberoId) {
   futuras.forEach((reserva) => void notificarSuspension(reserva._id));
 }
 
+// ---- Gestión de citas ----
+
 /** Listado de citas con filtros por fecha y estado. */
 async function reservas(req, res) {
   const filtro = {};
+  // Solo se aplica el estado si viene de la lista válida (evita inyección de valores raros).
   const estado = ESTADOS_RESERVA.some(([valor]) => valor === req.query.estado) ? req.query.estado : '';
 
+  // La fecha solo se filtra si tiene el formato exacto AAAA-MM-DD.
   if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.fecha || '')) {
     filtro.fecha = new Date(`${req.query.fecha}T00:00:00`);
   }
@@ -500,6 +543,7 @@ async function formularioReserva(req, res, error = '') {
     ? await Reserva.findById(req.params.id).populate('cliente peluquero peluqueria')
     : null;
 
+  // Los ObjectIds se pasan como string para rellenar los <select> del formulario.
   const datos = reserva
     ? {
         ...aObjeto(reserva),
@@ -533,6 +577,8 @@ async function guardarReserva(req, res) {
     return formularioReserva(req, res, 'Completa todos los datos de la cita.');
   }
 
+  // Mismas reglas de disponibilidad que en la reserva pública: horario de la sede,
+  // bloqueos y citas solapadas; "excluir" evita chocar consigo mismo al editar.
   const error = await validarCita(
     { Usuario, Horario, Bloqueo, Reserva },
     {
@@ -565,6 +611,7 @@ async function guardarReserva(req, res) {
       const anterior = await Reserva.findById(req.params.id);
       if (!anterior) return res.redirect('/admin/reservas');
 
+      // El cambio de estado debe respetar la máquina de transiciones permitidas.
       const destino = TRANSICIONES_RESERVA[anterior.estado] || [];
       if (!destino.includes(valores.estado)) {
         return formularioReserva(req, res, 'Ese cambio de estado no está permitido.');
@@ -580,6 +627,7 @@ async function guardarReserva(req, res) {
     void notificarReserva(reserva._id, editar ? 'modificada' : 'reservada');
     return res.redirect('/admin/reservas');
   } catch (creationError) {
+    // 11000 = clave única duplicada: alguien más tomó ese mismo horario.
     const mensaje = creationError.code === 11000
       ? 'Ese horario ya está ocupado.'
       : 'No se pudo guardar la cita.';
@@ -607,6 +655,8 @@ async function cancelarReserva(req, res) {
 
   return res.redirect('/admin/reservas');
 }
+
+// ---- Gestión de barberías ----
 
 /** Listado de barberías. */
 async function peluquerias(req, res) {
@@ -687,6 +737,8 @@ async function quitarFotoPeluqueria(req, res) {
   return res.redirect('/admin/peluquerias');
 }
 
+// ---- Gestión de productos ----
+
 /** Listado de productos. */
 async function productos(req, res) {
   return res.render('administrador/admin_productos', {
@@ -721,6 +773,7 @@ async function guardarProducto(req, res) {
 
     if (!producto) return res.redirect('/admin/productos');
 
+    // El stock previo permite detectar más abajo el paso a cero unidades.
     const stockAnterior = producto.stock || 0;
     const precio = Number(req.body.precio);
     const stock = Number(req.body.stock);
@@ -735,6 +788,7 @@ async function guardarProducto(req, res) {
     producto.precio = precio;
     producto.stock = stock;
     producto.categoria = CATEGORIAS.some(([valor]) => valor === req.body.categoria) ? req.body.categoria : CATEGORIAS[0][0];
+    // Un producto solo queda disponible si el admin lo marca y además tiene stock.
     producto.disponible = req.body.disponible === 'on' && producto.stock > 0;
 
     if (req.body.quitar_imagen && producto.imagen) {
@@ -749,6 +803,7 @@ async function guardarProducto(req, res) {
 
     await producto.save();
 
+    // Aviso a todos los admins activos cuando un producto pasa de tener stock a 0.
     if (stockAnterior > 0 && producto.stock === 0) {
       const administradores = await Usuario.find({ rol: 'Admin', activo: { $ne: false } }).select('_id');
 
@@ -790,11 +845,15 @@ async function quitarImagenProducto(req, res) {
   return res.redirect('/admin/productos');
 }
 
+// ---- Horarios y bloqueos ----
+
 /** Horarios y bloqueos por barbería. */
 async function horarios(req, res) {
   const lista = aLista(await Peluqueria.find().sort({ nombre: 1 }));
   const actual = lista.find((item) => item.id === req.query.peluqueria) || lista[0] || null;
 
+  // Si a la sede le faltan días en la BD se crean con los valores por defecto
+  // (de lunes a sábado activo, de 09:00 a 18:00; domingo cerrado).
   if (actual) {
     const guardados = await Horario.find({ peluqueria: actual.id }).select('dia_semana');
     const faltantes = [0, 1, 2, 3, 4, 5, 6].filter(
@@ -814,7 +873,9 @@ async function horarios(req, res) {
     }
   }
 
+  // El mismo controlador atiende el guardado (POST) y la vista (GET).
   if (req.method === 'POST') {
+    // Se guardan los 7 días con upsert: crea el registro si no existe o lo actualiza.
     if (req.body.accion === 'guardar_horarios' && actual) {
       for (let dia = 0; dia <= 6; dia++) {
         const inicio = req.body[`inicio_${dia}`] || '09:00';
@@ -832,6 +893,7 @@ async function horarios(req, res) {
       }
     }
 
+    // Un bloqueo puede ser de día completo (hora null) o de una hora puntual.
     if (req.body.accion === 'crear_bloqueo' && actual && /^\d{4}-\d{2}-\d{2}$/.test(req.body.fecha || '')) {
       await Bloqueo.create({
         peluqueria: actual.id,
@@ -851,6 +913,7 @@ async function horarios(req, res) {
       ])
     : [[], []];
 
+  // Para la vista se combinan los días guardados con los defaults (lun–sáb 9–18).
   const horariosVista = [0, 1, 2, 3, 4, 5, 6].map((dia) => {
     const guardado = guardados.find((item) => item.dia_semana === dia);
 
@@ -882,8 +945,11 @@ async function eliminarBloqueo(req, res) {
   return res.redirect('/admin/horarios');
 }
 
+// ---- Mensajes, ingresos, pedidos, galería y auditoría ----
+
 /** Bandeja de mensajes de contacto. */
 async function mensajes(req, res) {
+  // Se leen primero y luego se marcan todos como leídos (punto de entrada de la bandeja).
   const lista = await Mensaje.find().sort({ createdAt: -1 });
   await Mensaje.updateMany({ leido: false }, { leido: true });
 
@@ -895,12 +961,14 @@ async function mensajes(req, res) {
 
 /** Historial de ingresos al sitio. */
 async function ingresos(req, res) {
+  // El filtro de rol solo se aplica si coincide con un rol válido.
   const filtro = ['Cliente', 'Barbero', 'Admin'].includes(req.query.rol) ? { rol: req.query.rol } : {};
   const lista = await Ingreso.find(filtro).populate('usuario', 'nombre apellido email').sort({ fecha: -1 });
 
   return res.render('administrador/admin_listar_ingresos', {
     layout: 'layouts/dashboard',
     title: 'Registro de Ingresos - TecnoCorte',
+    // Se descartan los ingresos cuyo usuario ya fue eliminado.
     ingresos: aLista(lista.filter((item) => item.usuario)).map((item) => ({ ...item, rol: item.rol })),
     rol_filtro: req.query.rol || ''
   });
@@ -910,6 +978,7 @@ async function ingresos(req, res) {
 async function pedidos(req, res) {
   const lista = await Pedido.find().populate('cliente', 'nombre apellido email').sort({ fecha: -1 }).limit(200);
 
+  // Consulta adicional por pedido para adjuntar sus líneas de producto.
   const datos = await Promise.all(
     lista.map(async (pedido) => ({
       ...aObjeto(pedido),
@@ -931,6 +1000,7 @@ async function actualizarPedido(req, res) {
   const pedido = await Pedido.findById(req.params.id).populate('cliente', 'nombre apellido email');
   if (!pedido) return res.redirect('/admin/pedidos');
 
+  // El estado nuevo debe estar en la máquina de transiciones del pedido.
   const permitidos = TRANSICIONES_PEDIDO[pedido.estado] || [];
   if (!permitidos.includes(req.body.estado)) {
     return res.redirect('/admin/pedidos?error=transicion');
@@ -938,6 +1008,7 @@ async function actualizarPedido(req, res) {
 
   pedido.estado = req.body.estado;
   pedido.pago_confirmado = req.body.pago_confirmado === 'on';
+  // La fecha de pago/entrega se marca la primera vez y no se pisa si ya existía.
   pedido.fecha_pago = pedido.pago_confirmado ? (pedido.fecha_pago || new Date()) : null;
   pedido.fecha_entrega = pedido.estado === 'Entregado' ? (pedido.fecha_entrega || new Date()) : null;
   await pedido.save();
@@ -959,8 +1030,10 @@ async function actualizarPedido(req, res) {
 /** Galería de todas las barberías para moderar fotos. */
 async function galeria(req, res) {
   const fotos = await ImagenPeluqueria.find().populate('peluqueria', 'nombre dueno').sort({ createdAt: -1 });
+  // IDs únicos de las sedes que tienen al menos una foto.
   const conFotos = [...new Set(fotos.filter((foto) => foto.peluqueria).map((foto) => String(foto.peluqueria._id)))];
 
+  // Se cuenta cuántas fotos tiene cada sede para el filtro del panel.
   const peluquerias = (await Peluqueria.find({ _id: { $in: conFotos } }).sort({ nombre: 1 })).map((peluqueria) => ({
     ...aObjeto(peluqueria),
     cantidad_fotos: fotos.filter((foto) => foto.peluqueria && String(foto.peluqueria._id) === String(peluqueria._id)).length
@@ -1000,7 +1073,9 @@ async function acciones(req, res) {
 
 /** Errores registrados en el sitio. */
 async function errores(req, res) {
+  // El mismo controlador atiende el marcado de estados (POST) y la vista (GET).
   if (req.method === 'POST') {
+    // "revisar_todos" limpia la bandeja; si no, se cambia el estado de un registro concreto.
     if (req.body.accion === 'revisar_todos') {
       await RegistroError.updateMany({ estado: 'pendiente' }, { estado: 'revisado' });
     } else if (ESTADOS_ERROR.some(([valor]) => valor === req.body.estado) && mongoose.isValidObjectId(req.body.registro_id)) {
@@ -1025,6 +1100,8 @@ async function errores(req, res) {
     errores_pendientes: pendientes
   });
 }
+
+// ---- Configuración del sitio ----
 
 /** Configuración general del sitio. */
 async function configuracion(req, res) {
@@ -1060,6 +1137,8 @@ async function editarInicio(req, res) {
   const productos = await Producto.find({ disponible: true }).sort({ categoria: 1, nombre: 1 });
 
   if (req.method === 'POST') {
+    // Solo se aceptan servicios del catálogo y productos disponibles reales;
+    // cualquier otro valor se guarda vacío.
     const nombres = new Set(servicios.map((servicio) => servicio.nombre));
     const ids = new Set(productos.map((producto) => String(producto._id)));
 
@@ -1097,6 +1176,8 @@ async function editarInicio(req, res) {
   });
 }
 
+// ---- Solicitudes de servicios ----
+
 /** Solicitudes de servicios que hacen los barberos. */
 async function solicitudesServicios(req, res) {
   if (req.method === 'POST' && mongoose.isValidObjectId(req.body.solicitud_id)) {
@@ -1106,6 +1187,7 @@ async function solicitudesServicios(req, res) {
       const nota = String(req.body.nota_admin || '').trim().slice(0, 300);
 
       if (req.body.accion === 'aprobar') {
+        // Evita duplicar si el barbero ya tiene un servicio con ese mismo nombre.
         const existe = await Servicio.findOne({ barbero: solicitud.barbero._id, nombre: solicitud.nombre });
 
         if (!existe) {
@@ -1168,6 +1250,8 @@ async function solicitudesServicios(req, res) {
     servicios_barberos: aLista(serviciosBarberos)
   });
 }
+
+// ---- Perfil y notificaciones ----
 
 /** Perfil del administrador. */
 async function perfil(req, res) {

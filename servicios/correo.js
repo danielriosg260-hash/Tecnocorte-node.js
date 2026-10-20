@@ -1,3 +1,11 @@
+/**
+ * Servicio de correo de TecnoCorte.
+ *
+ * Envía correos con nodemailer (Gmail) usando la plantilla EJS del proyecto
+ * (views/emails/notificacion.ejs) con el logo adjunto, y también maneja el
+ * flujo de verificación de correo: genera el código de 6 dígitos, guarda su
+ * hash en el usuario con caducidad de 15 minutos y lo compara al verificar.
+ */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -6,7 +14,9 @@ const nodemailer = require('nodemailer');
 
 // Ruta del logo que se adjunta a los correos.
 const RUTA_LOGO = path.join(__dirname, '..', 'public', 'images', 'Logo.png');
+// Plantilla HTML compartida por todos los correos del sistema.
 const RUTA_PLANTILLA = path.join(__dirname, '..', 'views', 'emails', 'notificacion.ejs');
+// Identificador cid con el que el logo se incrusta dentro del HTML del correo.
 const ID_LOGO = 'tecnocorte-logo';
 
 // Servicio de envío de correos. Se puede usar desde cualquier controlador.
@@ -47,9 +57,11 @@ function crearPlantilla({ title, preheader = '', greeting = '', content = '', ac
 
 /**
  * Envía un correo con la plantilla del proyecto.
- * Devuelve la respuesta de nodemailer o null si no hay credenciales.
+ * Acepta archivos adjuntos opcionalmente en `attachments`
+ * (lista con `{ filename, path }` como las espera nodemailer).
+ * Devuelve la respuesta de nodemailer o null si no hay credenciales o falla el envío.
  */
-async function enviarCorreo({ to, subject, title, preheader, greeting, content, action, text }) {
+async function enviarCorreo({ to, subject, title, preheader, greeting, content, action, text, attachments }) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn('Correo no enviado: faltan EMAIL_USER y EMAIL_PASS');
     return null;
@@ -67,6 +79,11 @@ async function enviarCorreo({ to, subject, title, preheader, greeting, content, 
     opciones.attachments = [{ filename: 'Logo.png', path: RUTA_LOGO, cid: ID_LOGO }];
   }
 
+  if (Array.isArray(attachments) && attachments.length > 0) {
+    // Los adjuntos pedidos por quien llama se suman a los del logo, sin pisarlos.
+    opciones.attachments = (opciones.attachments || []).concat(attachments);
+  }
+
   try {
     return await transporter.sendMail(opciones);
   } catch (error) {
@@ -80,10 +97,19 @@ async function enviarCorreo({ to, subject, title, preheader, greeting, content, 
 // Verificación de correo
 // ---------------------------------------------------------------------------
 
+/**
+ * Genera un código de 6 dígitos aleatorio (100000 a 999999).
+ * @returns {string} El código como texto, siempre con 6 caracteres.
+ */
 function generarCodigo() {
   return String(crypto.randomInt(100000, 1000000));
 }
 
+/**
+ * Devuelve el hash SHA-256 del código: en el usuario se guarda esto, nunca el código.
+ * @param {string} codigo Código de verificación.
+ * @returns {string} Hash en hexadecimal.
+ */
 function hashCodigo(codigo) {
   return crypto.createHash('sha256').update(String(codigo)).digest('hex');
 }
@@ -100,11 +126,13 @@ async function guardarCodigo(usuario) {
 /** Compara el código escrito por el usuario con el guardado. */
 function verificarCodigo(usuario, codigo) {
   if (!usuario || !usuario.email_verificacion_token || !usuario.email_verificacion_expira) return false;
+  // Código vencido: se rechaza aunque el hash siga coincidiendo.
   if (usuario.email_verificacion_expira < new Date()) return false;
 
   const guardado = Buffer.from(usuario.email_verificacion_token);
   const recibido = Buffer.from(hashCodigo(codigo));
 
+  // timingSafeEqual: comparación en tiempo fijo, para no filtrar el hash por tiempos de respuesta.
   return guardado.length === recibido.length && crypto.timingSafeEqual(guardado, recibido);
 }
 

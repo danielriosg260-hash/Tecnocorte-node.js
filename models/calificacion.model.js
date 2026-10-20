@@ -3,9 +3,11 @@ const mongoose = require('mongoose');
 // Calificación de una cita o reseña que deja un cliente desde la portada.
 const calificacionSchema = new mongoose.Schema(
   {
+    // Reserva calificada; null cuando es una reseña de portada sin cita previa.
     reserva: { type: mongoose.Schema.Types.ObjectId, ref: 'Reserva', default: null },
     cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     peluquero: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
+    // Estrellas: mínimo 1, máximo 5.
     puntuacion: { type: Number, required: true, min: 1, max: 5 },
     comentario: { type: String, maxlength: 1000, default: '' }
   },

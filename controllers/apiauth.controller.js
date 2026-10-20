@@ -1,3 +1,7 @@
+/**
+ * Autenticación para clientes de la API: login, registro, perfil y logout.
+ * Devuelve JSON con un token JWT en lugar de cookies de sesión.
+ */
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/usuario.model');
 const Ingreso = require('../models/ingreso.model');
@@ -20,10 +24,13 @@ async function login(req, res) {
 
     const usuario = await Usuario.findOne({ email }).select('+password +tokenVersion');
 
+    // Respuesta 401 genérica: no se revela si el correo existe o no.
     if (!usuario || !(await usuario.compararPassword(password))) {
       return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos.' });
     }
 
+    // A diferencia del login web, aquí solo se exige cuenta activa
+    // (el alta desde la API nace con el correo ya verificado).
     if (usuario.activo === false) {
       return res.status(403).json({ mensaje: 'Tu cuenta está suspendida.' });
     }
@@ -68,6 +75,7 @@ async function registro(req, res) {
       }
     });
   } catch (error) {
+    // 11000 es el código de clave duplicada de MongoDB: correo ya registrado.
     const mensaje = error.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo crear la cuenta.';
     return res.status(400).json({ mensaje });
   }

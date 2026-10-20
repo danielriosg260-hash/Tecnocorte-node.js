@@ -1,3 +1,7 @@
+/**
+ * Reservas de citas por parte del cliente: formulario con agenda en vivo,
+ * vista previa, confirmación, modificación, cancelación y calificación.
+ */
 const mongoose = require('mongoose');
 const Usuario = require('../models/usuario.model');
 const Peluqueria = require('../models/peluqueria.model');
@@ -17,8 +21,10 @@ async function datosAgenda() {
   const peluquerias = await Peluqueria.find().sort({ nombre: 1 });
   const barberos = await Usuario.find({ rol: 'Barbero', activo: { $ne: false } }).select('nombre apellido foto peluqueria_id');
 
+  // Solo interesan las citas desde hoy en adelante: ocupan franja en el calendario.
   const reservas = await Reserva.find({ fecha: { $gte: inicioDelDia() } }).select('peluquero fecha hora minutos');
 
+  // Base por defecto para cada sede; luego se pisa con los horarios guardados en BD.
   const horarios = {};
   peluquerias.forEach((peluqueria) => {
     horarios[String(peluqueria._id)] = horariosBase();
@@ -35,6 +41,7 @@ async function datosAgenda() {
     };
   });
 
+  // Los bloqueos viajan como "fecha" (clave) y hora (null = día completo) para el cliente.
   const bloqueos = (
     await Bloqueo.find({
       peluqueria: { $in: peluquerias.map((p) => p._id) },
@@ -44,10 +51,12 @@ async function datosAgenda() {
 
   return {
     peluquerias: aLista(peluquerias),
+    // Los IDs se pasan como string para compararlos en el cliente sin casts.
     peluqueros: barberos.map((barbero) => ({
       ...aObjeto(barbero),
       peluqueria_id: barbero.peluqueria_id ? String(barbero.peluqueria_id) : ''
     })),
+    // Los tres JSON alimentan el calendario del navegador (horarios, bloqueos y citas ya tomadas).
     horarios_json: JSON.stringify(horarios),
     bloqueos_json: JSON.stringify(bloqueos),
     reservas_json: JSON.stringify(
@@ -60,6 +69,8 @@ async function datosAgenda() {
     )
   };
 }
+
+// ---- Formulario y confirmación ----
 
 /** Formulario para agendar una cita. */
 async function reservarCita(req, res) {
@@ -98,6 +109,7 @@ async function preConfirmar(req, res) {
 
   const [peluqueria, peluquero] = await Promise.all([
     Peluqueria.findById(req.body.peluqueria),
+    // El barbero debe estar activo y pertenecer a la sede elegida.
     Usuario.findOne({
       _id: req.body.peluquero,
       rol: 'Barbero',
@@ -165,6 +177,8 @@ async function confirmarReserva(req, res) {
   }
 }
 
+// ---- Modificación, cancelación y calificación ----
+
 /** Formulario para modificar una cita existente. */
 async function editarReserva(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) return res.redirect('/perfil');
@@ -204,6 +218,7 @@ async function actualizarReserva(req, res) {
     if (!actual) return res.redirect('/perfil');
 
     if (!servicio || !dosHorasAntes(claveFecha(actual.fecha), actual.hora)) {
+      // Regla de negocio: los cambios requieren al menos 2 horas de anticipación.
       return res.redirect(
         `/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`
       );
@@ -217,6 +232,7 @@ async function actualizarReserva(req, res) {
         fecha: req.body.fecha,
         hora: req.body.hora,
         minutos: servicio.minutos,
+        // "excluir" deja fuera la propia reserva para no chocar consigo misma.
         excluir: actual._id
       }
     );
@@ -255,6 +271,7 @@ async function cancelarReserva(req, res) {
     estado: { $nin: ['Completada', 'Cancelada'] }
   });
 
+  // Solo se cancela si la cita es propia, no está completada/cancelada y quedan más de 2 horas.
   if (reserva && dosHorasAntes(claveFecha(reserva.fecha), reserva.hora)) {
     await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
     void notificarReserva(reserva._id, 'cancelada');
@@ -287,6 +304,7 @@ async function calificar(req, res) {
   const puntuacion = Number(req.body.puntuacion);
 
   if (reserva && Number.isInteger(puntuacion) && puntuacion >= 1 && puntuacion <= 5) {
+    // Upsert: crea la calificación o actualiza la que ya tenía esa cita.
     await Calificacion.findOneAndUpdate(
       { reserva: reserva._id },
       {

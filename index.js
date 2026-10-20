@@ -12,10 +12,12 @@ const { cargarSesion } = require('./middleware/sesion');
 const mantenimiento = require('./middleware/mantenimiento');
 const { manejarErrores, noEncontrado } = require('./middleware/errores');
 
+// Comprobación de la configuración mínima antes de montar la aplicación.
 if (!(process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL) || !process.env.JWT_SECRET) {
   throw new Error('MONGO_URI (o DATABASE_URL) y JWT_SECRET son obligatorios para iniciar TecnoCorte');
 }
 
+// En producción la clave debe ser larga para resistir ataques de fuerza bruta.
 if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción');
 }
@@ -23,11 +25,14 @@ if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32)
 const app = express();
 
 app.disable('x-powered-by');
+// Detrás de un proxy en producción se confía en la primera cabecera X-Forwarded-For.
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 
+// Middlewares de cuerpo: JSON y formularios, con límite de 20 KB.
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 
+// Motor de plantillas EJS con el layout base y archivos estáticos.
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
@@ -101,6 +106,8 @@ app.locals.fmtHora = (valor) => {
 
 app.locals.anio = new Date().getFullYear();
 
+// Middlewares globales: primero la sesión (necesaria para el resto),
+// después el modo mantenimiento y por último el registro de peticiones.
 app.use(cargarSesion);
 app.use(mantenimiento);
 app.use(morgan('dev'));
@@ -120,13 +127,20 @@ app.use('/', require('./routes/cuenta.routes'));
 app.use('/barbero', require('./routes/barbero.routes'));
 app.use('/admin', require('./routes/admin.routes'));
 
+// 404 para lo que no coincide con ninguna ruta y capturador final de errores.
 app.use(noEncontrado);
 app.use(manejarErrores);
 
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Arranque: conecta la base de datos, levanta el servidor en el puerto
+ * indicado y lanza las copias de seguridad programadas.
+ * Si algo falla se deja constancia en el log y se marca el proceso con error.
+ */
 const iniciarServidor = async () => {
   try {
+    // Sin base de datos no se abre el puerto.
     await conectarDB();
 
     app.listen(PORT, '0.0.0.0', () => {
@@ -134,6 +148,7 @@ const iniciarServidor = async () => {
       log.escribir(`Servidor iniciado en el puerto ${PORT}`);
     });
 
+    // Copias de seguridad programadas, sin bloquear el arranque.
     iniciarBackup();
   } catch (error) {
     console.error(`No se pudo iniciar TecnoCorte: ${error.message}`);
@@ -142,4 +157,5 @@ const iniciarServidor = async () => {
   }
 };
 
+// Arranque del proceso: los fallos se tratan dentro de iniciarServidor.
 void iniciarServidor();

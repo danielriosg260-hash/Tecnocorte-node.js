@@ -1,3 +1,7 @@
+/**
+ * Sesión de usuario para las vistas: lectura de la cookie, exigencia de
+ * sesión y de rol, y protección CSRF de los formularios.
+ */
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/usuario.model');
 const Notificacion = require('../models/notificacion.model');
@@ -8,15 +12,18 @@ const { leerCarrito, obtenerToken } = require('../config/session');
  * y en res.locals para que las vistas lo puedan usar.
  */
 async function cargarSesion(req, res, next) {
+  // Valores por defecto mientras no haya sesión: visitante anónimo.
   req.usuario = null;
   res.locals.logueado = null;
   res.locals.usuario = null;
   res.locals.rol = '';
+  // Total de artículos del carrito, que vive en la cookie y no depende del usuario.
   res.locals.cantidad = leerCarrito(req).reduce((total, item) => total + (Number(item.cantidad) || 0), 0);
   res.locals.notificaciones_no_leidas = 0;
   res.locals.mensajes_no_leidos = 0;
 
   const token = obtenerToken(req);
+  // Sin cookie de sesión: se continúa como visitante.
   if (!token) return next();
 
   try {
@@ -35,6 +42,7 @@ async function cargarSesion(req, res, next) {
         usuario: usuario._id,
         leida: false
       });
+      // La página depende del usuario: no debe guardarse en caché compartida.
       res.set('Cache-Control', 'private, no-store');
     }
   } catch {
@@ -92,4 +100,5 @@ function protegerCSRF(req, res, next) {
   return res.status(403).send('Solicitud rechazada por protección CSRF.');
 }
 
+// Se exportan la carga de sesión, los guardas de rol/sesión y el control CSRF.
 module.exports = { cargarSesion, exigirRol, exigirSesion, protegerCSRF };

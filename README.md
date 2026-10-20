@@ -72,7 +72,16 @@ El servicio está en `servicios/backup.js` y usa `node-cron` y `mongodump`.
   backup/2026-10-20_00-00-00/
   ```
 
-- Para probarlo sin esperar la hora programada:
+- El respaldo se empaqueta en un `.zip` (con un `LEEME.txt` dentro: qué contiene y cómo restaurarlo) y se envía por correo al `EMAIL_USER` del `.env`, si pesa menos de **20 MB** (el límite de Gmail es 25 MB). Si es más grande, solo queda en la carpeta `backup/`.
+
+  ```text
+  backup-tecnocorte-2026-10-20_00-00-00.zip
+  ├── LEEME.txt
+  └── datos/tecnocorte/   (volcado de mongodump)
+  ```
+- Después de cada respaldo se borran automáticamente las carpetas con más de **30 días**.
+- Si el respaldo falla, se envía un aviso al correo configurado en `EMAIL_USER` y el error queda en `logs/app.log`.
+- Para probarlo sin esperar la hora programada (sin envío de correo):
 
   ```bash
   npm run backup
@@ -95,6 +104,8 @@ En Linux (Ubuntu o Debian), si está configurado el repositorio de MongoDB:
 ```bash
 sudo apt-get install mongodb-database-tools
 ```
+
+> En este equipo `mongodump` está instalado en `~/mongodb-tools/bin` (sin sudo). El servicio busca esa carpeta automáticamente antes de usar el `PATH`.
 
 ### Script de Bash y crontab
 
@@ -141,11 +152,14 @@ El script debe quedar dentro de la carpeta `scripts/` del proyecto y se recomien
 ### Política de respaldo
 
 - **Frecuencia:** todos los días a las 00:00.
-- **Conservación:** 7 días. Las carpetas más antiguas se pueden borrar con:
+- **Conservación:** 30 días, de forma automática después de cada respaldo. Para borrar a mano:
 
   ```bash
-  find backup -maxdepth 1 -type d -mtime +7 -exec rm -rf {} +
+  find backup -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
   ```
+
+- **Aviso de fallos:** si el respaldo no se completa, el servidor envía un correo al `EMAIL_USER` del `.env`.
+- **Envío por correo:** cada noche el `.zip` del respaldo (con su `LEEME.txt` de instrucciones) llega adjunto al `EMAIL_USER`, siempre que pese menos de 20 MB.
 
 - **Ubicación:** carpeta `backup/` del servidor. En producción se debe copiar también a un almacenamiento externo (otro disco, nube o correo).
 - **Verificación:** revisar el log y probar una restauración con `mongorestore` en una base de datos de prueba.

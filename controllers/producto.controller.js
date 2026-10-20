@@ -1,3 +1,7 @@
+/**
+ * API de productos: CRUD del catálogo de la tienda.
+ * El borrado se bloquea si el producto ya forma parte de algún pedido.
+ */
 const Producto = require('../models/producto.model');
 const PedidoProducto = require('../models/pedidoproducto.model');
 

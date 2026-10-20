@@ -1,9 +1,13 @@
+/**
+ * Rutas de la API de usuarios: CRUD completo reservado al Admin.
+ */
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuario.controller');
 const verificarToken = require('../middleware/auth');
 const exigirRol = require('../middleware/roles');
 
+// Token obligatorio y solo rol Admin en todo el archivo.
 router.use(verificarToken);
 router.use(exigirRol('Admin'));
 

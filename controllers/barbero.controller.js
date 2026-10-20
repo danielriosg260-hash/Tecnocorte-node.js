@@ -1,3 +1,7 @@
+/**
+ * Panel del barbero: dashboard con métricas, perfil, agenda y servicios,
+ * creación y cambio de estado de citas, edición de su peluquería y galería de fotos.
+ */
 const mongoose = require('mongoose');
 const Usuario = require('../models/usuario.model');
 const Peluqueria = require('../models/peluqueria.model');
@@ -19,8 +23,12 @@ const { registrarAccion } = require('../servicios/log');
 const { claveFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 const { aLista, aObjeto } = require('../utils/objetos');
 
+// ---- Constantes locales ----
+
+/** Secciones (pestañas) disponibles en la zona de configuración del barbero. */
 const PESTANAS = ['portafolio', 'agenda', 'servicios', 'notificaciones'];
 
+/** Mensaje por defecto cuando el barbero no tiene sede asignada. */
 const SIN_PELUQUERIA = 'Tu barbería aún no está asignada. Pídele al administrador que te cree una o te asigne a una existente.';
 
 /**
@@ -56,6 +64,8 @@ function precioServicio(catalogo, nombre) {
   return servicio ? servicio.precio : 0;
 }
 
+// ---- Panel y perfil ----
+
 /** Panel principal del barbero con métricas, citas y reseñas. */
 async function dashboard(req, res) {
   const [reservas, catalogo, config] = await Promise.all([
@@ -72,6 +82,7 @@ async function dashboard(req, res) {
   const citasHoy = citas.filter((cita) => claveFecha(cita.fecha) === hoy);
   const completadas = citas.filter((cita) => cita.estado === 'Completada');
 
+  // La próxima cita es la primera Pendiente o Confirmada cuya fecha y hora aún no pasan.
   const proxima = citas.find((cita) =>
     ['Pendiente', 'Confirmada'].includes(cita.estado) &&
     fechaLocal(claveFecha(cita.fecha), cita.hora) > new Date()
@@ -84,6 +95,7 @@ async function dashboard(req, res) {
       .limit(5)
   );
 
+  // Promedio de las últimas 5 reseñas, redondeado a un decimal.
   const suma = calificaciones.reduce((total, item) => total + item.puntuacion, 0);
   const peluqueria = await peluqueriaDelBarbero(req.usuario._id);
   const fotos = peluqueria
@@ -99,6 +111,7 @@ async function dashboard(req, res) {
     citas_completadas: completadas,
     citas_canceladas: citas.filter((cita) => cita.estado === 'Cancelada'),
     total_citas: citas.length,
+    // Ingresos = precio del catálogo de cada cita Completada (hoy y acumulado).
     ingresos_hoy: citasHoy
       .filter((cita) => cita.estado === 'Completada')
       .reduce((total, cita) => total + precioServicio(catalogo, cita.servicio), 0),
@@ -166,6 +179,8 @@ async function perfil(req, res) {
   });
 }
 
+// ---- Configuración ----
+
 /** Agenda con horarios y bloqueos de la peluquería del barbero. */
 async function cargarAgenda(peluqueria) {
   if (!peluqueria) return { horarios: [], bloqueos: [] };
@@ -176,6 +191,7 @@ async function cargarAgenda(peluqueria) {
   ]);
 
   const horarios = [0, 1, 2, 3, 4, 5, 6].map((dia) => {
+    // Si la sede no guardó ese día se usa el default: activo de lunes a sábado, 9–18.
     const guardado = guardados.find((item) => item.dia_semana === dia);
 
     return {
@@ -223,9 +239,11 @@ async function configuracion(req, res) {
     if (accion === 'solicitar_servicio') {
       const destino = '/barbero/configuracion?seccion=servicios';
       const nombre = String(req.body.nombre || '').trim();
+      // Se limpian separadores de miles y decimales ("12.500" → 12500) antes de validar.
       const precio = Number(String(req.body.precio || '').replace(/[.,\s]/g, ''));
       const minutos = Number(req.body.minutos);
 
+      // Nombre vacío/muy largo, servicio ya incluido en el catálogo base o duración inválida: se ignora.
       if (!nombre || nombre.length > 100) return res.redirect(destino);
       if (SERVICIOS.some((servicio) => servicio.nombre === nombre)) return res.redirect(destino);
       if (!Number.isFinite(precio) || precio < 0 || !DURACIONES_SERVICIO.includes(minutos)) {
@@ -288,6 +306,8 @@ async function configuracion(req, res) {
     ingresos
   });
 }
+
+// ---- Citas ----
 
 /** Formulario para que el barbero agende una cita a un cliente. */
 async function crearCita(req, res) {
@@ -375,6 +395,7 @@ async function cambiarEstadoCita(req, res) {
   const anterior = reserva.estado;
   reserva.estado = nuevoEstado;
 
+  // Regla de negocio: cancelar solo se permite con al menos 2 horas de anticipación.
   if (nuevoEstado === 'Cancelada' && !dosHorasAntes(claveFecha(reserva.fecha), reserva.hora)) {
     return res.redirect('/barbero?error=' + encodeURIComponent('Solo puedes cancelar con 2 horas de anticipación.'));
   }
@@ -385,6 +406,8 @@ async function cambiarEstadoCita(req, res) {
 
   return res.redirect('/barbero');
 }
+
+// ---- Peluquería y galería ----
 
 /** Formulario para editar la peluquería del barbero. */
 async function editarPeluqueria(req, res) {

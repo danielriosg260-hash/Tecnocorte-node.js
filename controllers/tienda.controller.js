@@ -1,3 +1,7 @@
+/**
+ * Vistas de la tienda para el usuario con sesión: listado de productos
+ * y ficha de detalle (con redirección si el producto no existe).
+ */
 const Producto = require('../models/producto.model');
 const { aLista, aObjeto } = require('../utils/objetos');
 
@@ -16,6 +20,7 @@ async function tienda(req, res) {
 async function detalleProducto(req, res) {
   const producto = await Producto.findById(req.params.id);
 
+  // ID inexistente o borrado: se vuelve a la vitrina sin mostrar error.
   if (!producto) return res.redirect('/tienda');
 
   return res.render('usuarios/usuario_producto_detalle', {

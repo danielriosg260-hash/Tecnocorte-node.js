@@ -1,3 +1,8 @@
+/**
+ * Modo mantenimiento del sitio.
+ * Si el Admin lo activa, los visitantes ven la página de aviso mientras
+ * algunas rutas (login, admin, estáticos y API) siguen disponibles.
+ */
 const Configuracion = require('../models/configuracion.model');
 const log = require('../servicios/log');
 
@@ -22,8 +27,10 @@ async function mantenimiento(req, res, next) {
   }
 
   if (!config.modo_mantenimiento) return next();
+  // El Admin siempre pasa para poder apagar el mantenimiento.
   if (req.usuario && req.usuario.rol === 'Admin') return next();
 
+  // Cualquier otro visitante ve la página de aviso (503).
   res.status(503);
   return res.render('publicos/mantenimiento', {
     title: 'Mantenimiento',

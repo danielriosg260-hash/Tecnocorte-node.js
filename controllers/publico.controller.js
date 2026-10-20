@@ -1,3 +1,7 @@
+/**
+ * Vistas públicas del sitio sin sesión de cliente: página de inicio, servicios,
+ * barberías, páginas informativas, formulario de contacto y reseñas generales.
+ */
 const Mensaje = require('../models/mensaje.model');
 const Peluqueria = require('../models/peluqueria.model');
 const Calificacion = require('../models/calificacion.model');
@@ -23,6 +27,8 @@ async function galeriasPorPeluqueria(peluquerias) {
       .map(aObjeto)
   }));
 }
+
+// ---- Inicio y catálogo ----
 
 /**
  * Página principal. El admin y el barbero van directo a su panel, salvo que
@@ -57,6 +63,8 @@ async function servicios(req, res) {
     servicios: await catalogoServicios()
   });
 }
+
+// ---- Barberías ----
 
 /** Listado de barberías (sedes). */
 async function peluquerias(req, res) {
@@ -93,6 +101,8 @@ async function detallePeluqueria(req, res) {
   });
 }
 
+// ---- Contacto ----
+
 /** Muestra el formulario de contacto con los datos que ya había escrito. */
 async function mostrarAyuda(req, res, error = '', exito = '', valores = {}) {
   const config = await Configuracion.cargar();
@@ -110,6 +120,7 @@ async function mostrarAyuda(req, res, error = '', exito = '', valores = {}) {
     valores,
     error,
     exito,
+    // Si había datos en el POST fallido se reenvían como query string del formulario.
     form_post: valores && Object.keys(valores).length ? new URLSearchParams(valores).toString() : ''
   });
 }
@@ -189,24 +200,31 @@ async function ayuda(req, res) {
   return mostrarAyuda(req, res, '', 'Tu mensaje fue enviado. Te responderemos pronto.');
 }
 
+// ---- Páginas informativas ----
+
 /** Página de políticas de privacidad. */
 function politicas(req, res) {
   return res.render('publicos/politicas', { title: 'Políticas - TecnoCorte', active: '' });
 }
 
+/** Explica en qué consiste el servicio del sitio. */
 function comoFunciona(req, res) {
   return res.render('publicos/como_funciona', { title: 'Cómo Funciona - TecnoCorte', active: '' });
 }
 
+/** Presentación de la empresa detrás de TecnoCorte. */
 function sobreNosotros(req, res) {
   return res.render('publicos/sobre_nosotros', { title: 'Sobre Nosotros - TecnoCorte', active: '' });
 }
+
+// ---- Reseñas ----
 
 /** Página de agradecimiento cuando el cliente deja una reseña. */
 async function dejarResena(req, res) {
   const puntuacion = Number(req.body.puntuacion);
   const comentario = String(req.body.comentario || '').slice(0, 1000);
 
+  // Cada cliente tiene un límite de reseñas; si ya lo usó no se guarda nada.
   const restantes = await resenasRestantes(req.usuario._id);
   if (restantes <= 0) return res.redirect('/');
 

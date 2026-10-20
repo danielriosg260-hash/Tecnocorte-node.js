@@ -1,3 +1,7 @@
+/**
+ * Carrito de compras basado en cookie: agregar, actualizar y quitar productos,
+ * resumen y confirmación de la compra con descuento de stock en transacción.
+ */
 const mongoose = require('mongoose');
 const Producto = require('../models/producto.model');
 const Pedido = require('../models/pedido.model');
@@ -26,8 +30,10 @@ async function armarCarrito(req) {
 
   for (const item of guardado) {
     const producto = porId.get(String(item.producto));
+    // Producto borrado o sin stock: se omite del carrito resultante.
     if (!producto) continue;
 
+    // La cantidad se limita a 99 unidades y al stock actual del producto.
     const unidades = Math.min(Number(item.cantidad), 99, producto.stock || 99);
     if (unidades <= 0) continue;
 
@@ -48,6 +54,9 @@ function responder(req, res, datos) {
   return res.redirect('/carrito');
 }
 
+// ---- Operaciones del carrito ----
+
+/** Muestra el carrito con sus items, cantidad total y precio. */
 async function verCarrito(req, res) {
   const datos = await armarCarrito(req);
   guardarCarrito(res, datos.carrito);
@@ -60,6 +69,7 @@ async function verCarrito(req, res) {
   });
 }
 
+/** Agrega una unidad de un producto al carrito (máx. 99 o el stock disponible). */
 async function agregar(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Producto inválido.' });
@@ -83,6 +93,7 @@ async function agregar(req, res) {
   }
 
   guardarCarrito(res, datos.carrito);
+  // Se arma una petición simulada con la cookie ya guardada para recalcular total y cantidad.
   const actualizado = await armarCarrito({
     ...req,
     headers: { ...req.headers, cookie: `tc_cart=${encodeURIComponent(JSON.stringify(datos.carrito))}` }
@@ -95,6 +106,7 @@ async function agregar(req, res) {
   });
 }
 
+/** Sube o baja en 1 la cantidad de un producto; si llega a 0 lo quita. */
 async function actualizar(req, res) {
   const datos = await armarCarrito(req);
   const item = datos.carrito.find((entrada) => entrada.producto === String(req.params.id));
@@ -106,6 +118,7 @@ async function actualizar(req, res) {
 
   guardarCarrito(res, datos.carrito);
 
+  // Misma petición simulada que en "agregar" para refrescar totales tras el cambio.
   const actualizado = await armarCarrito({
     ...req,
     headers: { ...req.headers, cookie: `tc_cart=${encodeURIComponent(JSON.stringify(datos.carrito))}` }
@@ -121,6 +134,7 @@ async function actualizar(req, res) {
   });
 }
 
+/** Quita un producto del carrito por completo. */
 async function eliminar(req, res) {
   const datos = await armarCarrito(req);
   const carrito = datos.carrito.filter((item) => item.producto !== String(req.params.id));
@@ -160,6 +174,8 @@ async function finalizar(req, res) {
   try {
     let pedido;
 
+    // Transacción: o se descuenta stock y se crea el pedido de todos los items,
+    // o no se hace nada (si alguno ya no tiene stock suficiente).
     await sesion.withTransaction(async () => {
       for (const item of datos.items) {
         const actualizado = await Producto.findOneAndUpdate(
@@ -199,6 +215,7 @@ async function finalizar(req, res) {
   }
 }
 
+/** Página de éxito tras comprar (solo el dueño del pedido puede verla). */
 async function pedidoExitoso(req, res) {
   const pedido = await Pedido.findOne({ _id: req.params.id, cliente: req.usuario._id });
 

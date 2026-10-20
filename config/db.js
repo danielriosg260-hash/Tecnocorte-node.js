@@ -1,3 +1,8 @@
+/**
+ * Módulo de conexión a MongoDB.
+ * Centraliza la lectura de la URI desde el entorno y el establecimiento
+ * de la conexión única que usa toda la aplicación (mongoose).
+ */
 const mongoose = require('mongoose');
 
 // Nombre de la base de datos que se usa cuando la URI no lo trae.
@@ -23,10 +28,12 @@ function obtenerUri() {
  * Se llama una sola vez cuando arranca el servidor.
  */
 async function conectarDB() {
+  // Registra los errores que ocurran después de conectado (reintentos, red caída).
   mongoose.connection.on('error', (error) => {
     console.error('Error de conexión a MongoDB:', error.message);
   });
 
+  // dbName permite que la URI apunte a un clúster pero se use esta base concreta.
   await mongoose.connect(obtenerUri(), { dbName: BASE_DATOS });
   console.log(`Conectado a MongoDB (base de datos: ${BASE_DATOS})`);
 }

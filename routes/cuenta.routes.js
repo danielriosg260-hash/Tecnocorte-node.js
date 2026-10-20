@@ -1,3 +1,7 @@
+/**
+ * Rutas de la cuenta del cliente (área privada).
+ * Perfil, notificaciones, reservas de citas y carrito de la tienda.
+ */
 const express = require('express');
 const router = express.Router();
 const cliente = require('../controllers/cliente.controller');
@@ -7,6 +11,7 @@ const { exigirRol, exigirSesion, protegerCSRF } = require('../middleware/sesion'
 const { subirFoto } = require('../middleware/subida');
 const asyncHandler = require('../middleware/errores').asyncHandler;
 
+// Toda la cuenta exige sesión iniciada y protección CSRF.
 router.use(protegerCSRF);
 router.use(exigirSesion);
 

@@ -1,3 +1,6 @@
+// Utilidades para convertir documentos de mongoose en datos listos para las
+// vistas y para normalizar entradas comunes (correo, redirecciones, errores).
+
 const { CATEGORIAS, DIAS, TIPOS_MENSAJE } = require('../config/constantes');
 
 /** Traduce el valor de una lista de opciones a su texto visible. */

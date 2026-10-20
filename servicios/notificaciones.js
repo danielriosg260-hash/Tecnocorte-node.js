@@ -1,8 +1,27 @@
+/**
+ * Servicio de notificaciones de TecnoCorte.
+ *
+ * Maneja dos canales a la vez:
+ *  - Notificaciones internas (colección `Notificacion`, se leen en el panel).
+ *  - Correos electrónicos vía ./correo.
+ *
+ * Tipos de eventos que cubre:
+ *  - Cuentas: bienvenida al crear una cuenta y aviso a admins de intento de
+ *    acceso con cuenta suspendida.
+ *  - Reservas: creación, confirmación, modificación y cancelación de citas
+ *    (notifica al cliente y al barbero).
+ *  - Suspensiones: avisa al cliente que su barbero quedó disponible y debe
+ *    reprogramar la cita.
+ *
+ * Todas las funciones tragan los errores y solo los escriben en consola para
+ * que un fallo de correo o de base de datos nunca rompa la operación principal.
+ */
 const Notificacion = require('../models/notificacion.model');
 const Reserva = require('../models/reserva.model');
 const Usuario = require('../models/usuario.model');
 const { enviarCorreo, escapeHtml } = require('./correo');
 
+// Texto base (tipo, título y mensaje) de cada notificación según el evento de la reserva.
 const DATOS_EVENTO = {
   reservada: { tipo: 'reserva', titulo: 'Nueva cita', mensaje: 'Se ha creado una nueva cita.' },
   confirmada: { tipo: 'reserva', titulo: 'Cita confirmada', mensaje: 'La cita fue confirmada.' },
@@ -10,7 +29,10 @@ const DATOS_EVENTO = {
   cancelada: { tipo: 'cancelacion', titulo: 'Cita cancelada', mensaje: 'La cita fue cancelada.' }
 };
 
-/** Arma la URL base del sitio para los enlaces de los correos. */
+/**
+ * Arma la URL base del sitio para los enlaces de los correos.
+ * @returns {string} La APP_URL sin barra final, o '' si no está definida o no es http(s).
+ */
 function urlBase() {
   const valor = String(process.env.APP_URL || '').trim().replace(/\/$/, '');
 
@@ -18,11 +40,16 @@ function urlBase() {
     const url = new URL(valor);
     return ['http:', 'https:'].includes(url.protocol) ? valor : '';
   } catch {
+    // Sin APP_URL o con una URL inválida: los correos salen sin botón de enlace.
     return '';
   }
 }
 
-/** Crea la notificación de bienvenida y el correo cuando un admin crea una cuenta. */
+/**
+ * Crea la notificación de bienvenida y el correo cuando un admin crea una cuenta.
+ * @param {object} usuario Usuario recién creado (usa _id, nombre y email).
+ * @returns {Promise<void>} No lanza errores: solo los registra en consola.
+ */
 async function notificarCuentaCreada(usuario) {
   try {
     await Notificacion.create({
@@ -49,12 +76,17 @@ async function notificarCuentaCreada(usuario) {
   }
 }
 
-/** Avisa a los administradores cuando alguien intenta entrar con una cuenta suspendida. */
+/**
+ * Avisa a los administradores cuando alguien intenta entrar con una cuenta suspendida.
+ * @param {object} usuario Cuenta suspendida que intentó iniciar sesión (nombre, apellido).
+ * @returns {Promise<void>} No hace nada si no hay administradores activos.
+ */
 async function avisarCuentaSuspendida(usuario) {
   try {
     const administradores = await Usuario.find({ rol: 'Admin', activo: { $ne: false } }).select('_id');
     if (!administradores.length) return;
 
+    // Una sola consulta de inserción para no crear un documento por cada admin.
     await Notificacion.insertMany(
       administradores.map((admin) => ({
         usuario: admin._id,
@@ -68,7 +100,13 @@ async function avisarCuentaSuspendida(usuario) {
   }
 }
 
-/** Crea las notificaciones internas del cliente y del barbero. */
+/**
+ * Crea las notificaciones internas del cliente y del barbero.
+ * Si el evento no está en DATOS_EVENTO se usa un texto genérico de actualización.
+ * @param {object} reserva Reserva con cliente y peluquero poblados (o solo con sus ids).
+ * @param {string} evento Clave de DATOS_EVENTO: reservada, confirmada, modificada o cancelada.
+ * @returns {Promise<void>}
+ */
 async function crearNotificacionesReserva(reserva, evento) {
   const datos = DATOS_EVENTO[evento] || {
     tipo: 'reserva',
@@ -77,6 +115,7 @@ async function crearNotificacionesReserva(reserva, evento) {
   };
 
   const usuarios = [reserva.cliente, reserva.peluquero].filter(Boolean).map((usuario) => usuario._id || usuario);
+  // Sin duplicados: evita avisar dos veces cuando el cliente y el barbero son la misma persona.
   const unicos = [...new Set(usuarios.map(String))];
 
   await Notificacion.insertMany(
@@ -84,7 +123,12 @@ async function crearNotificacionesReserva(reserva, evento) {
   );
 }
 
-/** Envía el correo y crea las notificaciones de una cita. */
+/**
+ * Envía el correo y crea las notificaciones de una cita.
+ * @param {string} reservaId Id de la reserva (se pobla cliente, peluquero y peluqueria).
+ * @param {string} evento Evento de la reserva; se usa también en el asunto del correo.
+ * @returns {Promise<void>} Sale sin enviar nada si la reserva ya no existe o no hay destinatarios.
+ */
 async function notificarReserva(reservaId, evento) {
   try {
     const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
@@ -93,9 +137,11 @@ async function notificarReserva(reservaId, evento) {
     await crearNotificacionesReserva(reserva, evento);
 
     const base = urlBase();
+    // Fecha en formato colombiano (ej: 20/10/2026) para el texto del correo.
     const fecha = new Date(reserva.fecha).toLocaleDateString('es-CO');
     const texto = `La cita de ${reserva.servicio || 'servicio'} para el ${fecha} a las ${reserva.hora} en ${reserva.peluqueria ? reserva.peluqueria.nombre : 'TecnoCorte'} fue ${evento.toLowerCase()}.`;
 
+    // Cada destinatario recibe su propio enlace: el cliente edita la cita, el barbero abre su panel.
     const destinatarios = [
       reserva.cliente && reserva.cliente.email
         ? { to: reserva.cliente.email, url: base ? `${base}/editar-reserva/${reserva._id}` : '' }
@@ -107,6 +153,7 @@ async function notificarReserva(reservaId, evento) {
 
     if (!destinatarios.length) return;
 
+    // Los correos se envían en paralelo para no esperar uno tras otro.
     await Promise.all(
       destinatarios.map((destinatario) =>
         enviarCorreo({
@@ -116,6 +163,7 @@ async function notificarReserva(reservaId, evento) {
           preheader: `Actualización de tu cita de ${reserva.servicio || 'servicio'}.`,
           greeting: 'Hola,',
           content: `<p>${escapeHtml(texto)}</p><p>Si necesitas modificarla, entra a tu panel de TecnoCorte.</p>`,
+          // El botón cambia según a quién va el correo (editar cita vs. abrir panel).
           action: destinatario.url
             ? {
                 label: destinatario.url.includes('/editar-reserva/') ? 'Modificar mi cita' : 'Abrir mi panel',
@@ -131,7 +179,12 @@ async function notificarReserva(reservaId, evento) {
   }
 }
 
-/** Avisa al cliente que su barbero fue suspendido y debe reprogramar. */
+/**
+ * Avisa al cliente que su barbero fue suspendido y debe reprogramar.
+ * Crea la notificación interna y envía el correo con el enlace para editar la cita.
+ * @param {string} reservaId Id de la reserva afectada.
+ * @returns {Promise<void>} No hace nada si la reserva no existe o no tiene cliente.
+ */
 async function notificarSuspension(reservaId) {
   try {
     const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');

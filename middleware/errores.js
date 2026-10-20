@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const log = require('../services/log');
+const log = require('../servicios/log');
 
 /** Envuelve un controlador async para que los errores lleguen al middleware. */
 function asyncHandler(controlador) {

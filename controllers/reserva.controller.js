@@ -3,8 +3,8 @@ const Reserva = require('../models/reserva.model');
 const Usuario = require('../models/usuario.model');
 const Peluqueria = require('../models/peluqueria.model');
 const { ESTADOS_RESERVA } = require('../config/constantes');
-const { notificarReserva } = require('../services/notificaciones');
-const { reservasSolapadas } = require('../services/disponibilidad');
+const { notificarReserva } = require('../servicios/notificaciones');
+const { reservasSolapadas } = require('../servicios/disponibilidad');
 const { esFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 
 const ESTADOS_ACTIVOS = ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'];

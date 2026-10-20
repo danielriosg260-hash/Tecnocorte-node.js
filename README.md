@@ -63,9 +63,7 @@ Está construida con **Node.js, Express, MongoDB, Mongoose y EJS**.
 
 ## Backup
 
-El servicio está en `services/backup.js` y usa `node-cron` y `mongodump`.
-
-> En la bitácora el archivo aparece como `servicios/backup.js`. En este proyecto quedó en `services/backup.js` para mantener el mismo nombre de carpeta que `controllers`, `models`, `routes`, etc.
+El servicio está en `servicios/backup.js` y usa `node-cron` y `mongodump`.
 
 - Se ejecuta todos los días a las **00:00**.
 - Cada respaldo se guarda en su propia carpeta:
@@ -217,7 +215,7 @@ models/       Modelos de Mongoose
 public/       CSS e imágenes
 routes/       Rutas públicas, de usuario, de barbero y de administrador
 scripts/      Scripts de backup y de crontab
-services/     Correo, backup, logs, catálogo y disponibilidad
+servicios/    Correo, backup, logs, catálogo y disponibilidad
 test/         Pruebas del proyecto
 utils/        Funciones auxiliares
 views/        Plantillas EJS

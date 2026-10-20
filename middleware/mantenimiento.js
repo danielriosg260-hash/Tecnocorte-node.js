@@ -1,5 +1,5 @@
 const Configuracion = require('../models/configuracion.model');
-const log = require('../services/log');
+const log = require('../servicios/log');
 
 // Rutas que siguen abiertas aunque el sitio esté en mantenimiento.
 const PREFIJOS_PERMITIDOS = ['/login', '/logout', '/admin', '/css', '/js', '/images', '/uploads', '/api/'];

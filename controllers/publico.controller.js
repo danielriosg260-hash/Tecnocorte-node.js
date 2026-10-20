@@ -5,8 +5,8 @@ const Configuracion = require('../models/configuracion.model');
 const ImagenPeluqueria = require('../models/imagengaleria.model');
 const Notificacion = require('../models/notificacion.model');
 const Usuario = require('../models/usuario.model');
-const { enviarCorreo, escapeHtml } = require('../services/correo');
-const { catalogoServicios, contenidoInicio, resenasRestantes } = require('../services/catalogo');
+const { enviarCorreo, escapeHtml } = require('../servicios/correo');
+const { catalogoServicios, contenidoInicio, resenasRestantes } = require('../servicios/catalogo');
 const { TIPOS_MENSAJE } = require('../config/constantes');
 const { aLista, aObjeto, normalizarEmail, panelDe } = require('../utils/objetos');
 

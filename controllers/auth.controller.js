@@ -11,8 +11,8 @@ const {
   enviarCorreo,
   guardarCodigo,
   verificarCodigo
-} = require('../services/correo');
-const { avisarCuentaSuspendida } = require('../services/notificaciones');
+} = require('../servicios/correo');
+const { avisarCuentaSuspendida } = require('../servicios/notificaciones');
 const { mensajeError, normalizarEmail, panelDe, urlSegura } = require('../utils/objetos');
 
 /** Crea el token JWT que se guarda en la cookie de sesión. */

@@ -7,7 +7,7 @@ const PedidoProducto = require('../models/pedidoproducto.model');
 const Calificacion = require('../models/calificacion.model');
 const Notificacion = require('../models/notificacion.model');
 const Ingreso = require('../models/ingreso.model');
-const { RESENAS_POR_PERSONA, resenasRestantes } = require('../services/catalogo');
+const { RESENAS_POR_PERSONA, resenasRestantes } = require('../servicios/catalogo');
 const { aLista, aObjeto } = require('../utils/objetos');
 
 const PESTANAS = ['perfil', 'seguridad', 'notificaciones', 'privacidad'];

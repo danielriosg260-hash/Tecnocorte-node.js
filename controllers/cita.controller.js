@@ -6,9 +6,9 @@ const Calificacion = require('../models/calificacion.model');
 const Horario = require('../models/horario.model');
 const Bloqueo = require('../models/bloqueo.model');
 const { ESTADOS_RESERVA } = require('../config/constantes');
-const { buscarServicioCatalogo, catalogoServicios } = require('../services/catalogo');
-const { dosHorasAntes, horariosBase, inicioDelDia, validarCita } = require('../services/disponibilidad');
-const { notificarReserva } = require('../services/notificaciones');
+const { buscarServicioCatalogo, catalogoServicios } = require('../servicios/catalogo');
+const { dosHorasAntes, horariosBase, inicioDelDia, validarCita } = require('../servicios/disponibilidad');
+const { notificarReserva } = require('../servicios/notificaciones');
 const { claveFecha, fechaLocal } = require('../utils/fechas');
 const { aLista, aObjeto } = require('../utils/objetos');
 

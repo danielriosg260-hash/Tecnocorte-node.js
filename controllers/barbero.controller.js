@@ -12,10 +12,10 @@ const ImagenPeluqueria = require('../models/imagengaleria.model');
 const Ingreso = require('../models/ingreso.model');
 const Configuracion = require('../models/configuracion.model');
 const { DIAS, DURACIONES_SERVICIO, ESTADOS_RESERVA, SERVICIOS, TRANSICIONES_RESERVA } = require('../config/constantes');
-const { catalogoServicios, buscarServicioCatalogo } = require('../services/catalogo');
-const { dosHorasAntes, inicioDelDia, validarCita } = require('../services/disponibilidad');
-const { notificarReserva } = require('../services/notificaciones');
-const { registrarAccion } = require('../services/log');
+const { catalogoServicios, buscarServicioCatalogo } = require('../servicios/catalogo');
+const { dosHorasAntes, inicioDelDia, validarCita } = require('../servicios/disponibilidad');
+const { notificarReserva } = require('../servicios/notificaciones');
+const { registrarAccion } = require('../servicios/log');
 const { claveFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 const { aLista, aObjeto } = require('../utils/objetos');
 

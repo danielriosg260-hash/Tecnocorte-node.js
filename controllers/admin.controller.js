@@ -27,10 +27,10 @@ const {
   TRANSICIONES_PEDIDO,
   TRANSICIONES_RESERVA
 } = require('../config/constantes');
-const { catalogoServicios, buscarServicioCatalogo } = require('../services/catalogo');
-const { inicioDelDia, validarCita } = require('../services/disponibilidad');
-const { notificarCuentaCreada, notificarReserva, notificarSuspension } = require('../services/notificaciones');
-const { registrarAccion } = require('../services/log');
+const { catalogoServicios, buscarServicioCatalogo } = require('../servicios/catalogo');
+const { inicioDelDia, validarCita } = require('../servicios/disponibilidad');
+const { notificarCuentaCreada, notificarReserva, notificarSuspension } = require('../servicios/notificaciones');
+const { registrarAccion } = require('../servicios/log');
 const { peluqueriaDelBarbero } = require('./barbero.controller');
 const { claveFecha, fechaLocal } = require('../utils/fechas');
 const { aLista, aObjeto, mensajeError, normalizarEmail } = require('../utils/objetos');

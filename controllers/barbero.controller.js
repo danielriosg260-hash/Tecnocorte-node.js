@@ -22,6 +22,7 @@ const { notificarReserva } = require('../servicios/notificaciones');
 const { registrarAccion } = require('../servicios/log');
 const { claveFecha, fechaLocal, minutosDeHora } = require('../utils/fechas');
 const { aLista, aObjeto } = require('../utils/objetos');
+const { urlSubida } = require('../middleware/subida');
 
 // ---- Constantes locales ----
 
@@ -137,7 +138,7 @@ async function perfil(req, res) {
     usuario.apellido = String(req.body.apellido || usuario.apellido).trim();
     usuario.telefono = String(req.body.telefono || '').trim();
 
-    if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+    if (req.file) usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
 
     await usuario.save();
     return res.redirect('/barbero/perfil');
@@ -221,7 +222,7 @@ async function configuracion(req, res) {
       usuario.apellido = String(req.body.apellido || usuario.apellido).trim() || usuario.apellido;
       usuario.telefono = String(req.body.telefono || '').trim();
 
-      if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+      if (req.file) usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
 
       await usuario.save();
       return res.redirect('/barbero/configuracion?seccion=portafolio');
@@ -367,7 +368,7 @@ async function crearCita(req, res) {
       estado: 'Pendiente'
     });
 
-    void notificarReserva(reserva._id, 'reservada');
+    await notificarReserva(reserva._id, 'reservada');
     return res.redirect('/barbero');
   } catch (creationError) {
     const mensaje = creationError.code === 11000
@@ -395,14 +396,25 @@ async function cambiarEstadoCita(req, res) {
   const anterior = reserva.estado;
   reserva.estado = nuevoEstado;
 
-  // Regla de negocio: cancelar solo se permite con al menos 2 horas de anticipación.
+  if (nuevoEstado === 'Cancelada') {
+    reserva.motivo_cancelacion = 'Cancelada por el barbero.';
+    reserva.requiere_reprogramacion = false;
+    reserva.motivo_reprogramacion = '';
+  }
+
+  // Cancelar o marcar inasistencia requiere que la cita aún no haya empezado
+  // (cancelación) o que ya haya terminado (inasistencia).
   if (nuevoEstado === 'Cancelada' && !dosHorasAntes(claveFecha(reserva.fecha), reserva.hora)) {
     return res.redirect('/barbero?error=' + encodeURIComponent('Solo puedes cancelar con 2 horas de anticipación.'));
   }
 
+  if (nuevoEstado === 'NoAsistio' && new Date(`${claveFecha(reserva.fecha)}T${reserva.hora}:00`).getTime() + (reserva.minutos || 30) * 60000 > Date.now()) {
+    return res.redirect('/barbero?error=' + encodeURIComponent('La cita todavía no ha terminado.'));
+  }
+
   await reserva.save();
   await registrarAccion(req, 'actualizar_cita', 'Reserva', reserva._id, `Estado: ${anterior} a ${nuevoEstado}`);
-  void notificarReserva(reserva._id, nuevoEstado.toLowerCase());
+  await notificarReserva(reserva._id, nuevoEstado.toLowerCase());
 
   return res.redirect('/barbero');
 }
@@ -420,7 +432,7 @@ async function editarPeluqueria(req, res) {
     peluqueria.telefono = String(req.body.telefono || '').trim();
     peluqueria.descripcion = String(req.body.descripcion || '').trim().slice(0, 2000);
 
-    if (req.file) peluqueria.imagen = `/uploads/${req.file.filename}`;
+    if (req.file) peluqueria.imagen = urlSubida(req.file);
 
     await peluqueria.save();
     return res.redirect('/barbero/peluqueria');
@@ -460,8 +472,8 @@ async function agregarImagen(req, res) {
 
   await ImagenPeluqueria.create({
     peluqueria: peluqueria._id,
-    url: `/uploads/${req.file.filename}`,
-    public_id: req.file.filename,
+    url: urlSubida(req.file),
+    public_id: req.file.public_id || req.file.filename,
     descripcion: String(req.body.descripcion || '').trim().slice(0, 200)
   });
 

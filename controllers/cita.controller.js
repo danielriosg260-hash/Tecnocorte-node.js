@@ -166,7 +166,7 @@ async function confirmarReserva(req, res) {
       minutos: servicio.minutos
     });
 
-    void notificarReserva(reserva._id, 'reservada');
+    await notificarReserva(reserva._id, 'reservada');
     return res.redirect('/perfil');
   } catch (creationError) {
     const mensaje = creationError.code === 11000
@@ -186,7 +186,7 @@ async function editarReserva(req, res) {
   const reserva = await Reserva.findOne({
     _id: req.params.id,
     cliente: req.usuario._id,
-    estado: { $nin: ['Cancelada', 'Completada'] }
+    estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] }
   }).populate('peluquero peluqueria');
 
   if (!reserva) return res.redirect('/perfil');
@@ -217,7 +217,11 @@ async function actualizarReserva(req, res) {
     const actual = await Reserva.findOne({ _id: req.params.id, cliente: req.usuario._id });
     if (!actual) return res.redirect('/perfil');
 
-    if (!servicio || !dosHorasAntes(claveFecha(actual.fecha), actual.hora)) {
+    if (!['Pendiente', 'Confirmada', 'Reprogramar'].includes(actual.estado)) {
+      return res.redirect(`/editar-reserva/${req.params.id}?error=${encodeURIComponent('Esta cita ya no se puede modificar.')}`);
+    }
+
+    if (!servicio || (actual.estado !== 'Reprogramar' && !dosHorasAntes(claveFecha(actual.fecha), actual.hora))) {
       // Regla de negocio: los cambios requieren al menos 2 horas de anticipación.
       return res.redirect(
         `/editar-reserva/${req.params.id}?error=${encodeURIComponent('Los cambios deben hacerse con al menos 2 horas de anticipación.')}`
@@ -250,12 +254,13 @@ async function actualizarReserva(req, res) {
         minutos: servicio.minutos,
         estado: 'Pendiente',
         requiere_reprogramacion: false,
-        motivo_reprogramacion: ''
+        motivo_reprogramacion: '',
+        motivo_cancelacion: ''
       },
       { runValidators: true }
     );
 
-    void notificarReserva(actual._id, 'modificada');
+    await notificarReserva(actual._id, 'modificada');
     return res.redirect('/perfil');
   } catch (error) {
     const mensaje = error.code === 11000 ? 'Ese horario ya está ocupado.' : 'No se pudo modificar la cita.';
@@ -273,8 +278,13 @@ async function cancelarReserva(req, res) {
 
   // Solo se cancela si la cita es propia, no está completada/cancelada y quedan más de 2 horas.
   if (reserva && dosHorasAntes(claveFecha(reserva.fecha), reserva.hora)) {
-    await Reserva.findByIdAndUpdate(reserva._id, { estado: 'Cancelada' });
-    void notificarReserva(reserva._id, 'cancelada');
+    await Reserva.findByIdAndUpdate(reserva._id, {
+      estado: 'Cancelada',
+      requiere_reprogramacion: false,
+      motivo_reprogramacion: '',
+      motivo_cancelacion: 'Cancelada por el cliente.'
+    });
+    await notificarReserva(reserva._id, 'cancelada');
   }
 
   return res.redirect('/perfil');
@@ -288,7 +298,7 @@ async function confirmarCita(req, res) {
     { new: true }
   );
 
-  if (reserva) void notificarReserva(reserva._id, 'confirmada');
+  if (reserva) await notificarReserva(reserva._id, 'confirmada');
 
   return res.redirect('/notificaciones');
 }

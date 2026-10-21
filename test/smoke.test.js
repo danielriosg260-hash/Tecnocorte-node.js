@@ -65,7 +65,7 @@ test('los modelos aplican límites básicos de negocio', () => {
 
   // Reserva: la hora debe encajar en el patrón de hora y usar esos estados.
   assert.ok(Reserva.schema.path('hora').options.match.test('23:59'));
-  assert.deepEqual(Reserva.schema.path('estado').options.enum, ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar']);
+  assert.deepEqual(Reserva.schema.path('estado').options.enum, ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar', 'NoAsistio']);
   // Producto: precio y stock no pueden ser negativos.
   assert.equal(Producto.schema.path('precio').options.min, 0);
   assert.equal(Producto.schema.path('stock').options.min, 0);

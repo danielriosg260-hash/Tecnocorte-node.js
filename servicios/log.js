@@ -24,6 +24,13 @@ const ARCHIVO_LOG = path.join(CARPETA_LOGS, 'app.log');
  * @returns {boolean} true si se escribió; false si falló.
  */
 function escribir(mensaje) {
+  // El sistema de archivos de Vercel es efímero y no debe usarse para logs.
+  // La plataforma recoge stdout/stderr y permite consultarlo desde Runtime Logs.
+  if (process.env.VERCEL) {
+    console.log(`[TecnoCorte] ${mensaje}`);
+    return true;
+  }
+
   try {
     fs.mkdirSync(CARPETA_LOGS, { recursive: true });
     // Hora de Colombia para que las líneas del log coincidan con el país del negocio.
@@ -41,6 +48,8 @@ function escribir(mensaje) {
  * @returns {string} El texto completo, o '' si el archivo no existe o no se puede leer.
  */
 function leer() {
+  if (process.env.VERCEL) return '';
+
   try {
     if (!fs.existsSync(ARCHIVO_LOG)) return '';
     return fs.readFileSync(ARCHIVO_LOG, 'utf8');
@@ -55,6 +64,8 @@ function leer() {
  * @returns {boolean} true si ya no existía o se borró; false si falló.
  */
 function borrar() {
+  if (process.env.VERCEL) return true;
+
   try {
     // Si no existe, no hay nada que borrar y se responde true.
     if (fs.existsSync(ARCHIVO_LOG)) fs.unlinkSync(ARCHIVO_LOG);

@@ -1,5 +1,7 @@
 // Se cargan las variables del .env antes de usar cualquier módulo que las lea.
 require('dotenv').config({ quiet: true });
+// Todas las citas del negocio usan la hora de Colombia, incluso en Vercel.
+process.env.TZ = process.env.TZ || 'America/Bogota';
 
 const express = require('express');
 const path = require('path');
@@ -8,7 +10,7 @@ const morgan = require('morgan');
 const { conectarDB } = require('./config/db');
 const log = require('./servicios/log');
 const { iniciarBackup } = require('./servicios/backup');
-const { cargarSesion } = require('./middleware/sesion');
+const { cargarSesion, protegerCSRF } = require('./middleware/sesion');
 const mantenimiento = require('./middleware/mantenimiento');
 const { manejarErrores, noEncontrado } = require('./middleware/errores');
 
@@ -111,6 +113,9 @@ app.locals.anio = new Date().getFullYear();
 app.use(cargarSesion);
 app.use(mantenimiento);
 app.use(morgan('dev'));
+// La API también acepta cookies; exige origen/referer propio salvo que use
+// Authorization: Bearer, que es el flujo habitual de clientes externos.
+app.use('/api', protegerCSRF);
 
 // API
 app.use('/api/auth', require('./routes/auth.routes'));
@@ -134,8 +139,10 @@ app.use(manejarErrores);
 const PORT = process.env.PORT || 3000;
 
 /**
- * Arranque: conecta la base de datos, levanta el servidor en el puerto
- * indicado y lanza las copias de seguridad programadas.
+ * Arranque local: conecta la base de datos, levanta el servidor en el puerto
+ * indicado y lanza las copias de seguridad programadas. En Vercel, el
+ * servidor se importa desde `api/index.js` y la plataforma administra el
+ * ciclo de vida de la función.
  * Si algo falla se deja constancia en el log y se marca el proceso con error.
  */
 const iniciarServidor = async () => {
@@ -148,8 +155,9 @@ const iniciarServidor = async () => {
       log.escribir(`Servidor iniciado en el puerto ${PORT}`);
     });
 
-    // Copias de seguridad programadas, sin bloquear el arranque.
-    iniciarBackup();
+    // Vercel termina las funciones cuando quedan inactivas y no garantiza
+    // procesos persistentes; allí el backup se ejecuta desde un cron externo.
+    if (!process.env.VERCEL) iniciarBackup();
   } catch (error) {
     console.error(`No se pudo iniciar TecnoCorte: ${error.message}`);
     log.escribir(`ERROR al iniciar: ${error.message}`);
@@ -158,4 +166,6 @@ const iniciarServidor = async () => {
 };
 
 // Arranque del proceso: los fallos se tratan dentro de iniciarServidor.
-void iniciarServidor();
+if (require.main === module) void iniciarServidor();
+
+module.exports = app;

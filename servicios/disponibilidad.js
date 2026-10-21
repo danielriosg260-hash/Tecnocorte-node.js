@@ -74,8 +74,8 @@ async function reservasSolapadas(Reserva, { peluquero, fecha, hora, minutos, exc
   const reservas = await Reserva.find({
     peluquero,
     fecha: new Date(`${fecha}T00:00:00`),
-    // Solo cuentan las citas que siguen ocupando agenda (no canceladas).
-    estado: { $in: ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'] },
+    // Solo cuentan las citas que siguen ocupando agenda.
+    estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] },
     ...(excluir ? { _id: { $ne: excluir } } : {})
   }).select('hora minutos');
 

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
+    "dev": "node --watch index.js",
     "db": "mongod --dbpath ~/mongodb-data --port 27017 --bind_ip 127.0.0.1",
     "backup": "node scripts/backup.js",
     "test": "node --test"
@@ -13,7 +13,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
@@ -23,12 +27,11 @@
     "mongodb": "^7.6.0",
     "mongoose": "^8.24.2",
     "morgan": "^1.11.0",
-    "multer": "^2.3.0",
+    "multer": "^2.4.0",
     "node-cron": "^4.6.0",
-    "nodemailer": "^9.0.5"
+    "nodemailer": "^10.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
     "prettier": "^3.9.9"
   }
 }

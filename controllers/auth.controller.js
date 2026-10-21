@@ -65,7 +65,7 @@ async function iniciarSesion(req, res) {
 
     if (usuario.activo === false) {
       // El aviso salta en segundo plano para no demorar la respuesta del login.
-      void avisarCuentaSuspendida(usuario);
+      await avisarCuentaSuspendida(usuario);
       return mostrarLogin(req, res, 'Tu cuenta está suspendida. Contacta al administrador.');
     }
 

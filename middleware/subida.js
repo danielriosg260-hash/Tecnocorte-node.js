@@ -1,35 +1,57 @@
-/**
- * Subida de imágenes con Multer.
- * Guarda fotos de perfil, de peluquerías, productos y galería en
- * public/uploads con nombre aleatorio, limitando tipo y tamaño.
- */
+/** Subida de imágenes: disco local en desarrollo y Vercel Blob en producción. */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
+const { put } = require('@vercel/blob');
 
-// Carpeta donde se guardan las fotos que suben los usuarios.
 const CARPETA = path.join(__dirname, '..', 'public', 'uploads');
-if (!fs.existsSync(CARPETA)) fs.mkdirSync(CARPETA, { recursive: true });
+if (!process.env.VERCEL && !fs.existsSync(CARPETA)) fs.mkdirSync(CARPETA, { recursive: true });
 
-// Tipos de imagen aceptados y su extensión de archivo.
 const EXTENSIONES = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp'
 };
 
-// Los archivos se guardan en la carpeta pública con un nombre aleatorio
-// para no revelar datos del usuario ni pisar archivos existentes.
-const almacenamiento = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, CARPETA),
-  filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${EXTENSIONES[file.mimetype]}`)
-});
+const usarBlob = Boolean(process.env.VERCEL);
+const almacenamiento = usarBlob
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => cb(null, CARPETA),
+      filename: (req, file, cb) => cb(null, `${crypto.randomUUID()}${EXTENSIONES[file.mimetype]}`)
+    });
 
-// Rechaza cualquier archivo que no sea JPG, PNG o WebP.
 const filtro = (req, file, cb) => cb(null, Boolean(EXTENSIONES[file.mimetype]));
 
-// Fábrica de instancias de Multer con un máximo de archivos y 2 MB por imagen.
+async function guardarBlob(file) {
+  const nombre = `uploads/${crypto.randomUUID()}${EXTENSIONES[file.mimetype]}`;
+  const blob = await put(nombre, file.buffer, { access: 'public', contentType: file.mimetype });
+  file.url = blob.url;
+  file.public_id = blob.pathname;
+  return file;
+}
+
+async function prepararArchivos(archivos) {
+  if (!usarBlob) return;
+  for (const archivo of archivos) await guardarBlob(archivo);
+}
+
+function ejecutarSubida(parser, mensaje) {
+  return (req, res, next) => {
+    parser(req, res, async (error) => {
+      if (error) return res.status(400).send(mensaje);
+      try {
+        await prepararArchivos(req.files || (req.file ? [req.file] : []));
+        next();
+      } catch (blobError) {
+        console.error('No se pudo guardar la imagen:', blobError.message);
+        return res.status(503).send('El almacenamiento de imágenes no está disponible.');
+      }
+    });
+  };
+}
+
 function crearSubida(cantidad) {
   return multer({
     storage: almacenamiento,
@@ -38,37 +60,13 @@ function crearSubida(cantidad) {
   });
 }
 
-/** Sube una sola foto en el campo "foto". */
-function subirFoto(req, res, next) {
-  crearSubida(1).single('foto')(req, res, (error) => {
-    if (error) {
-      // Error de Multer (tipo no admitido, peso o número de archivos).
-      return res.status(400).send('La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
-    }
-    next();
-  });
+function urlSubida(file) {
+  if (!file) return '';
+  return file.url || `/uploads/${file.filename}`;
 }
 
-/** Sube hasta 6 fotos del portafolio en el campo "obras". */
-function subirObras(req, res, next) {
-  crearSubida(6).array('obras', 6)(req, res, (error) => {
-    if (error) {
-      return res.status(400).send('Puedes subir hasta 6 imágenes JPG, PNG o WebP de menos de 2 MB.');
-    }
-    next();
-  });
-}
+const subirFoto = ejecutarSubida(crearSubida(1).single('foto'), 'La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
+const subirObras = ejecutarSubida(crearSubida(6).array('obras', 6), 'Puedes subir hasta 6 imágenes JPG, PNG o WebP de menos de 2 MB.');
+const subirImagen = ejecutarSubida(crearSubida(1).single('imagen'), 'La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
 
-/** Sube una sola foto en el campo "imagen" (peluquerías, productos y galería). */
-function subirImagen(req, res, next) {
-  crearSubida(1).single('imagen')(req, res, (error) => {
-    if (error) {
-      // Error de Multer (tipo no admitido, peso o número de archivos).
-      return res.status(400).send('La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB.');
-    }
-    next();
-  });
-}
-
-// Se exportan los tres middlewares de subida y la carpeta de destino.
-module.exports = { subirFoto, subirImagen, subirObras, CARPETA };
+module.exports = { subirFoto, subirImagen, subirObras, urlSubida, CARPETA };

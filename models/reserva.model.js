@@ -15,16 +15,17 @@ const reservaSchema = new mongoose.Schema({
   // Duración reservada en minutos; define cuántos huecos ocupa en la agenda.
   minutos: { type: Number, default: 30, min: 15, max: 480 },
   // Estados del flujo de la cita (ver TRANSICIONES_RESERVA en config/constantes.js).
-  estado: { type: String, enum: ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar'], default: 'Pendiente' },
+  estado: { type: String, enum: ['Pendiente', 'Confirmada', 'Completada', 'Cancelada', 'Reprogramar', 'NoAsistio'], default: 'Pendiente' },
   // Se marca cuando el peluquero pide mover la cita y el cliente debe aceptar.
   requiere_reprogramacion: { type: Boolean, default: false },
-  motivo_reprogramacion: { type: String, default: '' }
+  motivo_reprogramacion: { type: String, default: '' },
+  motivo_cancelacion: { type: String, default: '' }
 }, { timestamps: true });
 
 // Impide dos reservas activas exactamente en el mismo puesto y horario.
 reservaSchema.index(
   { peluquero: 1, fecha: 1, hora: 1 },
-  { unique: true, partialFilterExpression: { estado: { $in: ['Pendiente', 'Confirmada', 'Completada', 'Reprogramar'] } } }
+  { unique: true, partialFilterExpression: { estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] } } }
 );
 
 const Reserva = mongoose.model('Reserva', reservaSchema);

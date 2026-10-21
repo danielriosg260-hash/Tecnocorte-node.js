@@ -215,10 +215,39 @@ async function notificarSuspension(reservaId) {
   }
 }
 
+/** Avisa cuando una modificación de agenda obliga a buscar otro horario. */
+async function notificarReprogramacion(reservaId, motivo = 'La agenda de la barbería cambió.') {
+  try {
+    const reserva = await Reserva.findById(reservaId).populate('cliente peluquero peluqueria');
+    if (!reserva || !reserva.cliente) return;
+    await Notificacion.create({
+      usuario: reserva.cliente._id,
+      reserva: reserva._id,
+      tipo: 'modificacion',
+      titulo: 'Debes reprogramar tu cita',
+      mensaje: motivo
+    });
+    const base = urlBase();
+    await enviarCorreo({
+      to: reserva.cliente.email,
+      subject: 'TecnoCorte: debes reprogramar tu cita',
+      title: 'Debes reprogramar tu cita',
+      preheader: motivo,
+      greeting: `Hola ${reserva.cliente.nombre},`,
+      content: `<p>${escapeHtml(motivo)}</p><p>Entra a tu perfil para escoger otro horario.</p>`,
+      action: base ? { label: 'Reprogramar cita', url: `${base}/editar-reserva/${reserva._id}` } : null,
+      text: motivo
+    });
+  } catch (error) {
+    console.error('Error al avisar la reprogramación:', error.message);
+  }
+}
+
 module.exports = {
   avisarCuentaSuspendida,
   crearNotificacionesReserva,
   notificarCuentaCreada,
   notificarReserva,
-  notificarSuspension
+  notificarSuspension,
+  notificarReprogramacion
 };

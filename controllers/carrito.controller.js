@@ -20,7 +20,7 @@ async function armarCarrito(req) {
 
   if (!guardado.length) return { carrito: [], items: [], cantidad: 0, total: 0 };
 
-  const productos = await Producto.find({ _id: { $in: guardado.map((item) => item.producto) } });
+  const productos = await Producto.find({ _id: { $in: guardado.map((item) => item.producto) }, disponible: true });
   const porId = new Map(productos.map((producto) => [String(producto._id), producto]));
 
   const carrito = [];
@@ -34,7 +34,7 @@ async function armarCarrito(req) {
     if (!producto) continue;
 
     // La cantidad se limita a 99 unidades y al stock actual del producto.
-    const unidades = Math.min(Number(item.cantidad), 99, producto.stock || 99);
+    const unidades = Math.min(Number(item.cantidad), 99, producto.stock);
     if (unidades <= 0) continue;
 
     const subtotal = unidades * producto.precio;

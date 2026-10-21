@@ -13,6 +13,7 @@ const Notificacion = require('../models/notificacion.model');
 const Ingreso = require('../models/ingreso.model');
 const { RESENAS_POR_PERSONA, resenasRestantes } = require('../servicios/catalogo');
 const { aLista, aObjeto } = require('../utils/objetos');
+const { urlSubida } = require('../middleware/subida');
 
 // Pestañas disponibles en la pantalla de configuración.
 const PESTANAS = ['perfil', 'seguridad', 'notificaciones', 'privacidad'];
@@ -76,7 +77,7 @@ async function actualizarPerfil(req, res) {
 
   // La foto solo cambia si el formulario trae un archivo nuevo.
   if (req.file) {
-    usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+    usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
   }
 
   await usuario.save();
@@ -136,7 +137,7 @@ async function configuracion(req, res) {
       usuario.nombre = String(req.body.nombre || usuario.nombre).trim();
       usuario.apellido = String(req.body.apellido || usuario.apellido).trim();
       usuario.telefono = String(req.body.telefono || '').trim();
-      if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+      if (req.file) usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
       await usuario.save();
       return res.redirect('/configuracion?seccion=perfil');
     }

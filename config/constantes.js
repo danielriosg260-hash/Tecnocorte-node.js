@@ -54,7 +54,8 @@ const ESTADOS_RESERVA = [
   ['Pendiente', 'Pendiente'],
   ['Confirmada', 'Confirmada'],
   ['Completada', 'Completada'],
-  ['Cancelada', 'Cancelada']
+  ['Cancelada', 'Cancelada'],
+  ['NoAsistio', 'No asistió']
 ];
 
 // Nombres de los días empezando por lunes; coincide con dia_semana 0..6
@@ -78,10 +79,12 @@ const DURACIONES_SERVICIO = [15, 20, 30, 45, 60, 75, 90, 120];
 
 // Estados a los que puede pasar una cita. Evita saltos sin sentido.
 const TRANSICIONES_RESERVA = {
-  Pendiente: ['Pendiente', 'Confirmada', 'Cancelada'],
-  Confirmada: ['Confirmada', 'Completada', 'Cancelada'],
+  Pendiente: ['Pendiente', 'Confirmada', 'Cancelada', 'NoAsistio'],
+  Confirmada: ['Confirmada', 'Completada', 'Cancelada', 'NoAsistio'],
   Completada: ['Completada'],
-  Cancelada: ['Cancelada', 'Pendiente']
+  Cancelada: ['Cancelada'],
+  Reprogramar: ['Reprogramar', 'Pendiente', 'Cancelada'],
+  NoAsistio: ['NoAsistio']
 };
 
 // Estados a los que puede pasar un pedido.

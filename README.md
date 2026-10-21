@@ -6,7 +6,7 @@ Está construida con **Node.js, Express, MongoDB, Mongoose y EJS**.
 
 ## Requisitos
 
-- Node.js 18 o superior
+- Node.js 20 o superior
 - MongoDB local o una base de datos en MongoDB Atlas
 - MongoDB Database Tools (`mongodump` y `mongorestore`)
 
@@ -40,24 +40,34 @@ Está construida con **Node.js, Express, MongoDB, Mongoose y EJS**.
 
 | Variable | Descripción |
 |---|---|
-| `MONGO_URI` | Cadena de conexión de MongoDB (local o Atlas) |
+| `MONGO_URI` o `DATABASE_URL` | Cadena de conexión de MongoDB (local o Atlas) |
 | `MONGO_DB_NAME` | Nombre de la base de datos |
 | `JWT_SECRET` | Clave secreta para firmar el token de sesión |
 | `JWT_EXPIRE` | Duración del token, por ejemplo `7d` |
-| `PORT` | Puerto del servidor (en Render lo asigna la plataforma) |
+| `PORT` | Puerto del servidor (Vercel lo gestiona automáticamente) |
 | `NODE_ENV` | `development` o `production` |
 | `APP_URL` | URL pública de la aplicación |
 | `EMAIL_USER` | Correo de Gmail que envía las notificaciones |
 | `EMAIL_PASS` | Contraseña de aplicación de Gmail |
+| `BLOB_READ_WRITE_TOKEN` | Token de Vercel Blob para conservar imágenes subidas |
 
-> `EMAIL_PASS` no es la contraseña normal del correo. Debe ser una contraseña de aplicación creada desde la cuenta de Google.
+> `EMAIL_PASS` no es la contraseña normal del correo. Debe ser una contraseña de aplicación creada desde la cuenta de Google. En Vercel, configura estas variables desde **Project Settings → Environment Variables**; no subas `.env` al repositorio.
+
+## Despliegue en Vercel
+
+1. Crea una base de datos en MongoDB Atlas y permite las conexiones desde Vercel (`0.0.0.0/0` en la lista de acceso de Atlas, con un usuario de base de datos restringido).
+2. Importa este repositorio en Vercel. El archivo `vercel.json` ya dirige todas las rutas al handler `api/index.js`.
+3. Configura `MONGO_URI`, `MONGO_DB_NAME`, `JWT_SECRET`, `JWT_EXPIRE`, `NODE_ENV=production`, `APP_URL`, `EMAIL_USER` y `EMAIL_PASS` en las variables del proyecto.
+4. Cambia `APP_URL` por la URL final de Vercel y vuelve a desplegar.
+
+Vercel no conserva archivos escritos durante una invocación. El proyecto usa Vercel Blob para las nuevas imágenes cuando se ejecuta en Vercel; conecta un Blob Store al proyecto para inyectar `BLOB_READ_WRITE_TOKEN`. El backup programado no se inicia allí y los logs se envían a los Runtime Logs de Vercel. Las imágenes incluidas en `public/` sí se despliegan normalmente.
 
 ## Scripts
 
 | Comando | Qué hace |
 |---|---|
 | `npm start` | Inicia el servidor |
-| `npm run dev` | Inicia el servidor con nodemon |
+| `npm run dev` | Inicia el servidor con el modo watch de Node.js |
 | `npm test` | Ejecuta las pruebas |
 | `npm run backup` | Genera un respaldo manual de la base de datos |
 

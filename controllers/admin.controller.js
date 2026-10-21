@@ -22,6 +22,7 @@ const ImagenPeluqueria = require('../models/imagengaleria.model');
 const Servicio = require('../models/servicio.model');
 const SolicitudServicio = require('../models/solicitudservicio.model');
 const Configuracion = require('../models/configuracion.model');
+const { del } = require('@vercel/blob');
 const RegistroAccion = require('../models/registroaccion.model');
 const RegistroError = require('../models/registroerror.model');
 const {
@@ -34,11 +35,12 @@ const {
 } = require('../config/constantes');
 const { catalogoServicios, buscarServicioCatalogo } = require('../servicios/catalogo');
 const { inicioDelDia, validarCita } = require('../servicios/disponibilidad');
-const { notificarCuentaCreada, notificarReserva, notificarSuspension } = require('../servicios/notificaciones');
+const { notificarCuentaCreada, notificarReserva, notificarReprogramacion, notificarSuspension } = require('../servicios/notificaciones');
 const { registrarAccion } = require('../servicios/log');
 const { peluqueriaDelBarbero } = require('./barbero.controller');
 const { claveFecha, fechaLocal } = require('../utils/fechas');
 const { aLista, aObjeto, mensajeError, normalizarEmail } = require('../utils/objetos');
+const { urlSubida } = require('../middleware/subida');
 
 // ---- Constantes locales ----
 
@@ -61,6 +63,10 @@ const ESTADOS_ERROR = [
 
 /** Borra del disco la foto que se reemplaza o se quita. */
 function borrarArchivo(url) {
+  if (url && /^https?:\/\//i.test(url)) {
+    void del(url).catch((error) => console.error('No se pudo borrar la imagen remota:', error.message));
+    return;
+  }
   if (!url || !url.startsWith('/uploads/')) return;
 
   try {
@@ -429,14 +435,14 @@ async function guardarUsuario(req, res) {
 
     // La contraseña solo se actualiza si viene una nueva en el formulario.
     if (req.body.password) usuario.password = req.body.password;
-    if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+    if (req.file) usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
     if (req.body.quitar_foto && usuario.foto && usuario.foto.url) {
       borrarArchivo(usuario.foto.url);
       usuario.foto = { url: '', public_id: '' };
     }
 
     await usuario.save();
-    if (!editando) void notificarCuentaCreada(usuario);
+    if (!editando) await notificarCuentaCreada(usuario);
 
     return res.redirect('/admin/usuarios');
   } catch (error) {
@@ -483,24 +489,30 @@ async function suspenderUsuario(req, res) {
     usuario.activo = !usuario.activo;
     await usuario.save();
 
-    // Al suspender un barbero, sus citas futuras quedan marcadas para reprogramar
-    // y cada cliente afectado recibe una notificación.
-    if (usuario.rol === 'Barbero' && !usuario.activo) {
-      const futuras = await Reserva.find({
-        peluquero: usuario._id,
-        fecha: { $gte: inicioDelDia() },
-        estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] }
-      }).select('_id');
+    if (!usuario.activo) {
+      if (usuario.rol === 'Barbero') {
+        await suspenderCitasDelBarbero(usuario._id);
+      } else if (usuario.rol === 'Cliente') {
+        // Una cuenta suspendida no puede mantener citas futuras activas:
+        // se cancelan y se avisa al barbero para evitar que reserve ese turno.
+        const futuras = await Reserva.find({
+          cliente: usuario._id,
+          fecha: { $gte: inicioDelDia() },
+          estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] }
+        }).select('_id');
 
-      await Reserva.updateMany(
-        { _id: { $in: futuras.map((item) => item._id) } },
-        {
-          requiere_reprogramacion: true,
-          motivo_reprogramacion: 'El barbero fue suspendido. Selecciona otro barbero.'
-        }
-      );
+        await Reserva.updateMany(
+          { _id: { $in: futuras.map((item) => item._id) } },
+          {
+            estado: 'Cancelada',
+            requiere_reprogramacion: false,
+            motivo_reprogramacion: '',
+            motivo_cancelacion: 'La cuenta del cliente fue suspendida.'
+          }
+        );
 
-      futuras.forEach((reserva) => void notificarSuspension(reserva._id));
+        await Promise.all(futuras.map((reserva) => notificarReserva(reserva._id, 'cancelada')));
+      }
     }
   }
 
@@ -573,14 +585,14 @@ async function guardarPeluquero(req, res) {
     }
 
     if (req.body.password) barbero.password = req.body.password;
-    if (req.file) barbero.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+    if (req.file) barbero.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
     if (req.body.quitar_foto && barbero.foto && barbero.foto.url) {
       borrarArchivo(barbero.foto.url);
       barbero.foto = { url: '', public_id: '' };
     }
 
     await barbero.save();
-    if (!editando) void notificarCuentaCreada(barbero);
+    if (!editando) await notificarCuentaCreada(barbero);
 
     return res.redirect('/admin/peluqueros');
   } catch (error) {
@@ -612,12 +624,13 @@ async function suspenderCitasDelBarbero(barberoId) {
   await Reserva.updateMany(
     { _id: { $in: futuras.map((item) => item._id) } },
     {
+      estado: 'Reprogramar',
       requiere_reprogramacion: true,
       motivo_reprogramacion: 'El barbero fue suspendido. Selecciona otro barbero.'
     }
   );
 
-  futuras.forEach((reserva) => void notificarSuspension(reserva._id));
+  await Promise.all(futuras.map((reserva) => notificarSuspension(reserva._id)));
 }
 
 // ---- Gestión de citas ----
@@ -723,7 +736,10 @@ async function guardarReserva(req, res) {
     minutos: servicio.minutos,
     fecha: new Date(`${req.body.fecha}T00:00:00`),
     hora: req.body.hora,
-    estado: req.body.estado || 'Pendiente'
+    estado: req.body.estado || 'Pendiente',
+    requiere_reprogramacion: req.body.estado === 'Reprogramar',
+    motivo_reprogramacion: req.body.estado === 'Reprogramar' ? 'Marcada para reprogramación por administración.' : '',
+    motivo_cancelacion: req.body.estado === 'Cancelada' ? 'Cancelada por administración.' : ''
   };
 
   try {
@@ -739,6 +755,11 @@ async function guardarReserva(req, res) {
         return formularioReserva(req, res, 'Ese cambio de estado no está permitido.');
       }
 
+      if (valores.estado === 'NoAsistio') {
+        const fin = new Date(`${claveFecha(anterior.fecha)}T${anterior.hora}:00`).getTime() + (anterior.minutos || 30) * 60000;
+        if (fin > Date.now()) return formularioReserva(req, res, 'La cita todavía no ha terminado.');
+      }
+
       reserva = await Reserva.findByIdAndUpdate(req.params.id, valores, { new: true, runValidators: true });
       await registrarAccion(req, 'actualizar_cita', 'Reserva', reserva._id, `Estado: ${anterior.estado} a ${valores.estado}`);
     } else {
@@ -746,7 +767,7 @@ async function guardarReserva(req, res) {
       await registrarAccion(req, 'crear_cita', 'Reserva', reserva._id, `Cita de ${reserva.servicio}`);
     }
 
-    void notificarReserva(reserva._id, editar ? 'modificada' : 'reservada');
+    await notificarReserva(reserva._id, editar ? 'modificada' : 'reservada');
     return res.redirect('/admin/reservas');
   } catch (creationError) {
     // 11000 = clave única duplicada: alguien más tomó ese mismo horario.
@@ -768,11 +789,18 @@ async function eliminarReserva(req, res) {
 
 /** Cancela una cita sin borrarla. */
 async function cancelarReserva(req, res) {
-  const reserva = await Reserva.findByIdAndUpdate(req.params.id, { estado: 'Cancelada' }, { new: true });
+  const actual = await Reserva.findById(req.params.id);
+  if (!actual || ['Completada', 'NoAsistio', 'Cancelada'].includes(actual.estado)) return res.redirect('/admin/reservas');
+
+  const reserva = await Reserva.findByIdAndUpdate(
+    req.params.id,
+    { estado: 'Cancelada', motivo_cancelacion: 'Cancelada por el administrador.', requiere_reprogramacion: false },
+    { new: true }
+  );
 
   if (reserva) {
     await registrarAccion(req, 'cancelar_cita', 'Reserva', reserva._id, 'Cancelada por el administrador');
-    void notificarReserva(reserva._id, 'cancelada');
+    await notificarReserva(reserva._id, 'cancelada');
   }
 
   return res.redirect('/admin/reservas');
@@ -822,7 +850,7 @@ async function guardarPeluqueria(req, res) {
 
     if (req.file) {
       if (peluqueria.imagen) borrarArchivo(peluqueria.imagen);
-      peluqueria.imagen = `/uploads/${req.file.filename}`;
+      peluqueria.imagen = urlSubida(req.file);
     }
 
     await peluqueria.save();
@@ -920,7 +948,7 @@ async function guardarProducto(req, res) {
 
     if (req.file) {
       if (producto.imagen) borrarArchivo(producto.imagen);
-      producto.imagen = `/uploads/${req.file.filename}`;
+      producto.imagen = urlSubida(req.file);
     }
 
     await producto.save();
@@ -1013,6 +1041,8 @@ async function horarios(req, res) {
           { upsert: true, runValidators: true }
         );
       }
+
+      await marcarReservasFueraDeAgenda(actual.id);
     }
 
     // Un bloqueo puede ser de día completo (hora null) o de una hora puntual.
@@ -1023,6 +1053,8 @@ async function horarios(req, res) {
         hora: /^\d{2}:\d{2}$/.test(req.body.hora || '') ? req.body.hora : null,
         motivo: String(req.body.motivo || '').slice(0, 200)
       });
+
+      await marcarReservasFueraDeAgenda(actual.id);
     }
 
     return res.redirect(`/admin/horarios?peluqueria=${actual ? actual.id : ''}`);
@@ -1058,6 +1090,40 @@ async function horarios(req, res) {
     hoy: claveFecha(new Date()),
     error: req.query.error || ''
   });
+}
+
+/** Marca para reprogramación las citas futuras que una nueva agenda bloqueó. */
+async function marcarReservasFueraDeAgenda(peluqueriaId) {
+  const futuras = await Reserva.find({
+    peluqueria: peluqueriaId,
+    fecha: { $gte: inicioDelDia() },
+    estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] }
+  });
+
+  const afectadas = [];
+  for (const reserva of futuras) {
+    const error = await validarCita(
+      { Usuario, Horario, Bloqueo, Reserva },
+      {
+        peluqueria: reserva.peluqueria,
+        peluquero: reserva.peluquero,
+        fecha: claveFecha(reserva.fecha),
+        hora: reserva.hora,
+        minutos: reserva.minutos,
+        excluir: reserva._id
+      }
+    );
+
+    if (error && !['Reprogramar'].includes(reserva.estado)) {
+      reserva.estado = 'Reprogramar';
+      reserva.requiere_reprogramacion = true;
+      reserva.motivo_reprogramacion = `La agenda fue modificada: ${error}`;
+      await reserva.save();
+      afectadas.push(reserva._id);
+    }
+  }
+
+  await Promise.all(afectadas.map((id) => notificarReprogramacion(id, 'La agenda de la barbería cambió y tu horario ya no está disponible.')));
 }
 
 /** Elimina un bloqueo de horario. */
@@ -1135,6 +1201,13 @@ async function actualizarPedido(req, res) {
   const permitidos = TRANSICIONES_PEDIDO[pedido.estado] || [];
   if (!permitidos.includes(req.body.estado)) {
     return res.redirect('/admin/pedidos?error=transicion');
+  }
+
+  if (req.body.estado === 'Cancelado' && pedido.estado !== 'Cancelado') {
+    const lineas = await PedidoProducto.find({ pedido: pedido._id });
+    for (const linea of lineas) {
+      await Producto.findByIdAndUpdate(linea.producto, { $inc: { stock: linea.cantidad } });
+    }
   }
 
   pedido.estado = req.body.estado;
@@ -1393,7 +1466,7 @@ async function perfil(req, res) {
     usuario.nombre = String(req.body.nombre || usuario.nombre).trim();
     usuario.apellido = String(req.body.apellido || usuario.apellido).trim();
 
-    if (req.file) usuario.foto = { url: `/uploads/${req.file.filename}`, public_id: req.file.filename };
+    if (req.file) usuario.foto = { url: urlSubida(req.file), public_id: req.file.public_id || req.file.filename };
 
     await usuario.save();
     return res.redirect('/admin/perfil');

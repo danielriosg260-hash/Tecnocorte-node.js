@@ -3,6 +3,10 @@
  * Todas las rutas de este controlador están reservadas al rol Admin.
  */
 const Usuario = require('../models/usuario.model');
+const Reserva = require('../models/reserva.model');
+const Pedido = require('../models/pedido.model');
+const { inicioDelDia } = require('../servicios/disponibilidad');
+const { notificarReserva, notificarSuspension } = require('../servicios/notificaciones');
 const { aObjeto } = require('../utils/objetos');
 
 /** Lista todos los usuarios (sin la contraseña). */
@@ -57,6 +61,14 @@ async function findOneAndUpdate(req, res) {
     const usuario = await Usuario.findById(req.params.id).select('+password +tokenVersion');
     if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
 
+    if (usuario.rol === 'Admin' && req.body.activo === false) {
+      return res.status(403).json({ mensaje: 'Las cuentas de administrador no se suspenden.' });
+    }
+    if (usuario.rol === 'Admin' && req.body.rol && req.body.rol !== 'Admin') {
+      const administradoresActivos = await Usuario.countDocuments({ rol: 'Admin', activo: { $ne: false } });
+      if (administradoresActivos <= 1) return res.status(409).json({ mensaje: 'Debe quedar al menos un administrador activo.' });
+    }
+
     // Copia solo los campos enviados en el cuerpo, uno por uno.
     ['nombre', 'apellido', 'email', 'telefono', 'rol', 'activo', 'peluqueria_id'].forEach((campo) => {
       if (req.body[campo] !== undefined) usuario[campo] = req.body[campo];
@@ -66,6 +78,29 @@ async function findOneAndUpdate(req, res) {
     if (req.body.password !== undefined) usuario.password = req.body.password;
 
     await usuario.save();
+
+    if (req.body.activo === false) {
+      const filtro = {
+        [usuario.rol === 'Barbero' ? 'peluquero' : 'cliente']: usuario._id,
+        fecha: { $gte: inicioDelDia() },
+        estado: { $in: ['Pendiente', 'Confirmada', 'Reprogramar'] }
+      };
+      const futuras = await Reserva.find(filtro).select('_id');
+      if (usuario.rol === 'Barbero') {
+        await Reserva.updateMany(
+          { _id: { $in: futuras.map((item) => item._id) } },
+          { estado: 'Reprogramar', requiere_reprogramacion: true, motivo_reprogramacion: 'El barbero fue suspendido. Selecciona otro barbero.' }
+        );
+        await Promise.all(futuras.map((reserva) => notificarSuspension(reserva._id)));
+      } else if (usuario.rol === 'Cliente') {
+        await Reserva.updateMany(
+          { _id: { $in: futuras.map((item) => item._id) } },
+          { estado: 'Cancelada', requiere_reprogramacion: false, motivo_reprogramacion: '', motivo_cancelacion: 'La cuenta del cliente fue suspendida.' }
+        );
+        await Promise.all(futuras.map((reserva) => notificarReserva(reserva._id, 'cancelada')));
+      }
+    }
+
     res.status(200).json(aObjeto(usuario));
   } catch (error) {
     const mensaje = error.code === 11000 ? 'El correo ya está registrado.' : 'No se pudo actualizar el usuario.';
@@ -81,8 +116,18 @@ async function findOneAndDelete(req, res) {
       return res.status(400).json({ mensaje: 'No puedes eliminar tu propio usuario.' });
     }
 
-    const usuario = await Usuario.findByIdAndDelete(req.params.id);
+    const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
+
+    const tieneHistorial = await Promise.all([
+      Reserva.exists({ $or: [{ cliente: usuario._id }, { peluquero: usuario._id }] }),
+      Pedido.exists({ cliente: usuario._id })
+    ]);
+    if (tieneHistorial.some(Boolean)) {
+      return res.status(409).json({ mensaje: 'No se puede eliminar un usuario con reservas o pedidos. Suspéndelo en su lugar.' });
+    }
+
+    await usuario.deleteOne();
 
     res.status(200).json({ mensaje: 'Usuario eliminado correctamente.' });
   } catch (error) {

@@ -1,7 +1,9 @@
 // Se cargan las variables del .env antes de usar cualquier módulo que las lea.
 require('dotenv').config({ quiet: true });
 // Todas las citas del negocio usan la hora de Colombia, incluso en Vercel.
-process.env.TZ = process.env.TZ || 'America/Bogota';
+// APP_TIMEZONE es configurable; TZ está reservado por Vercel y no se usa
+// como variable del proyecto.
+process.env.TZ = process.env.APP_TIMEZONE || 'America/Bogota';
 
 const express = require('express');
 const path = require('path');
